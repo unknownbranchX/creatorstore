@@ -2,14 +2,19 @@ import { publicService } from '@/lib/services'
 import { normalizeSlug } from '@/lib/slug'
 import PublicStore from '@/components/storefront/PublicStore'
 import { StoreNotFound, StoreUnpublished, StoreInactive, StoreLookupError } from '@/components/storefront/StorefrontStatus'
+import { cache } from 'react'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+const getStorefront = cache(async (slug, pageSlug) => {
+  return publicService.resolveStorefront(slug, { pageSlug })
+})
+
 export async function generateMetadata({ params }) {
   const { username } = await params
   const slug = normalizeSlug(username)
-  const result = await publicService.resolveStorefront(slug)
+  const result = await getStorefront(slug, null)
   if (result.status === 'ok') {
     const data = result.data
     const name = data.profile?.name || slug
@@ -40,7 +45,7 @@ export default async function StorefrontPage({ params, searchParams }) {
   const slug = normalizeSlug(username)
   const resolvedSearchParams = await searchParams
   const pageSlug = resolvedSearchParams?.page || null
-  const result = await publicService.resolveStorefront(slug, { pageSlug })
+  const result = await getStorefront(slug, pageSlug)
 
   if (result.status === 'error') return <StoreLookupError />
   if (result.status === 'inactive' || (result.status === 'unpublished' && (result.reason === 'trial_expired' || result.reason === 'unsubscribed'))) {

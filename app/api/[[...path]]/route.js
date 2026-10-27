@@ -4,7 +4,7 @@ import { Readable } from 'stream'
 import { supabaseAdmin, ensureBucket, resolveDigitalProductStoragePath } from '@/lib/supabase'
 import { SESSION_COOKIE } from '@/lib/auth'
 import { dodoProvider } from '@/lib/dodo'
-import { productsRepo, ordersRepo, customersRepo, lessonsRepo, coursesRepo, entitlementsRepo, webhookEventsRepo, automationEventsRepo, profilesRepo, storesRepo, creatorSubscriptionsRepo, usersRepo, subscriptionInvoicesRepo } from '@/lib/repos'
+import { productsRepo, ordersRepo, customersRepo, lessonsRepo, coursesRepo, entitlementsRepo, webhookEventsRepo, automationEventsRepo, profilesRepo, storesRepo, creatorSubscriptionsRepo, usersRepo, subscriptionInvoicesRepo, autoDmQueueRepo, autoDmRateLimitsRepo, instagramRepo } from '@/lib/repos'
 import { isValidCountryCode, normalizeCountryCode } from '@/lib/countries'
 import { auditCustomerSubscriptions } from '@/lib/subscription-reconciliation'
 import { razorpaySubscriptionLifecycleService } from '@/lib/razorpay-subscription-lifecycle'
@@ -17,6 +17,7 @@ import {
   instagramService, automationService, instagramMessagingService, httpError,
   emailService, businessCardService, supportService, bundlesService, formsService,
 } from '@/lib/services'
+import { exportService } from '@/lib/export-service'
 import { notificationService } from '@/lib/notificationService'
 import { purchaseOtpService, PURCHASE_SESSION_COOKIE } from '@/lib/purchaseOtpService'
 import { getAppUrl } from '@/config/site'
@@ -425,7 +426,16 @@ async function processRoute(request, context = {}) {
       const body = await request.json()
       const allowed = ['store_view', 'product_view']
       if (allowed.includes(body.type) && body.creatorId) {
-        await analyticsService.track({ creatorId: body.creatorId, productId: body.productId || null, type: body.type, sessionId: body.sessionId || null })
+        const meta = body.metadata && typeof body.metadata === 'object' ? { ...body.metadata } : {}
+        if (body.referrer && !meta.referrer) meta.referrer = String(body.referrer).slice(0, 500)
+        if (body.source && !meta.source) meta.source = String(body.source).slice(0, 100)
+        await analyticsService.track({
+          creatorId: body.creatorId,
+          productId: body.productId || null,
+          type: body.type,
+          sessionId: body.sessionId || null,
+          metadata: meta,
+        })
       }
       return json({ ok: true })
     }
@@ -619,7 +629,10 @@ async function processRoute(request, context = {}) {
 
       try {
         const result = await instagramService.handleCallback(code, state)
-        const target = result?.returnUrl || '/dashboard/settings/connected-accounts'
+        let target = result?.returnUrl || '/dashboard/settings/connected-accounts'
+        if (typeof target !== 'string' || !target.startsWith('/') || target.startsWith('//') || target.startsWith('/\\')) {
+          target = '/dashboard/settings/connected-accounts'
+        }
         let redirectTarget = target
         if (result.status === 'SUBSCRIPTION_FAILED') {
           const sep = redirectTarget.includes('?') ? '&' : '?'
@@ -628,7 +641,7 @@ async function processRoute(request, context = {}) {
           const sep = redirectTarget.includes('?') ? '&' : '?'
           redirectTarget = `${redirectTarget}${sep}connected=1`
         }
-        const safeTarget = redirectTarget.startsWith('/') ? redirectTarget : `/${redirectTarget}`
+        const safeTarget = redirectTarget
         return NextResponse.redirect(`${appUrl}${safeTarget}`)
       } catch (err) {
         console.error('Instagram callback error:', err)
@@ -708,6 +721,63 @@ async function processRoute(request, context = {}) {
         const offset = parseInt(url.searchParams.get('offset') || '0', 10)
         return json(await automationService.getAutomationEvents(path[1], user.id, { limit, offset }))
       }
+      // GET /api/automations/queue
+      if (path.length === 2 && path[1] === 'queue' && method === 'GET') {
+        const status = url.searchParams.get('status') || null
+        const limit = parseInt(url.searchParams.get('limit') || '50', 10)
+        const offset = parseInt(url.searchParams.get('offset') || '0', 10)
+        const [jobsResult, stats] = await Promise.all([
+          autoDmQueueRepo.listJobsForCreator(user.id, { status, limit, offset }),
+          autoDmQueueRepo.getStatsForCreator(user.id),
+        ])
+        const igAcc = await instagramRepo.getByCreatorId(user.id)
+        let rateLimitStatus = null
+        if (igAcc?.id) {
+          rateLimitStatus = await autoDmRateLimitsRepo.getStatus(igAcc.id, user.id)
+        }
+        return json({
+          ...jobsResult,
+          stats,
+          rateLimitStatus,
+        })
+      }
+
+      // POST /api/automations/queue/[id]/retry
+      if (path.length === 4 && path[1] === 'queue' && path[3] === 'retry' && method === 'POST') {
+        const result = await autoDmQueueRepo.retryJob(path[2], user.id)
+        if (!result.success) return json({ error: result.reason }, 400)
+        return json(result)
+      }
+
+      // POST /api/automations/queue/[id]/cancel
+      if (path.length === 4 && path[1] === 'queue' && path[3] === 'cancel' && method === 'POST') {
+        const result = await autoDmQueueRepo.cancelJob(path[2], user.id)
+        if (!result.success) return json({ error: result.reason }, 400)
+        return json(result)
+      }
+
+      // POST /api/automations/queue/account/pause
+      if (path.length === 4 && path[1] === 'queue' && path[2] === 'account' && path[3] === 'pause' && method === 'POST') {
+        const igAcc = await instagramRepo.getByCreatorId(user.id)
+        if (!igAcc?.id) return json({ error: 'No connected Instagram account found' }, 400)
+        const body = await request.json().catch(() => ({}))
+        const pauseMinutes = Number(body.pauseMinutes) || 30
+        const updated = await autoDmRateLimitsRepo.pauseAccount(igAcc.id, {
+          pauseMinutes,
+          reason: body.reason || 'Manually paused by creator from dashboard',
+        })
+        return json({ success: true, rateLimit: updated })
+      }
+
+      // POST /api/automations/queue/account/resume
+      if (path.length === 4 && path[1] === 'queue' && path[2] === 'account' && path[3] === 'resume' && method === 'POST') {
+        const igAcc = await instagramRepo.getByCreatorId(user.id)
+        if (!igAcc?.id) return json({ error: 'No connected Instagram account found' }, 400)
+        const result = await autoDmRateLimitsRepo.resumeAccount(igAcc.id, user.id)
+        if (!result.success) return json({ error: result.reason }, 400)
+        return json({ success: true, rateLimit: result.record })
+      }
+
       // DELETE /api/automations/[id]
       if (path.length === 2 && method === 'DELETE') {
         return json(await automationService.deleteAutomation(path[1], user.id))
@@ -2180,13 +2250,29 @@ async function processRoute(request, context = {}) {
       }
     }
 
-    if (path[0] === 'leads' && !path[1] && method === 'GET') {
-
-
+    if (path[0] === 'leads') {
       const user = await requireCreatorUser(request)
-      const search = url.searchParams.get('search')
-      const tag = url.searchParams.get('tag')
-      return json(await leadService.list(user.id, { search, tag }))
+      if (path[1] === 'export' && method === 'GET') {
+        await creatorSubscriptionService.requireEntitlement(user.id, 'dataExport')
+        const search = url.searchParams.get('search')
+        const tag = url.searchParams.get('tag')
+        const res = await leadService.list(user.id, { search, tag })
+        const leads = Array.isArray(res) ? res : (res.items || [])
+        const headers = 'Name,Email,Source,Lead Magnet,Created At\n'
+        const rows = leads.map(l => `"${l.name || ''}","${l.email}","${l.source || 'Storefront'}","${l.leadMagnetTitle || 'Lead Magnet'}","${l.createdAt}"`).join('\n')
+        return new NextResponse(headers + rows, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': 'attachment; filename="creatorstore-leads.csv"',
+          },
+        })
+      }
+      if (!path[1] && method === 'GET') {
+        const search = url.searchParams.get('search')
+        const tag = url.searchParams.get('tag')
+        return json(await leadService.list(user.id, { search, tag }))
+      }
     }
     if (path[0] === 'coupons') {
       const user = await requireCreatorUser(request)
@@ -2354,7 +2440,7 @@ async function processRoute(request, context = {}) {
       if (!user || user.emailVerified === false) {
         return json({ user: null, profile: null, store: null })
       }
-      const me = await meService.getMe(user.id)
+      const me = await meService.getMe(user.id, { user })
       return json({ user, ...me })
     }
 
@@ -3033,6 +3119,7 @@ async function processRoute(request, context = {}) {
       const form = await request.formData()
       const file = form.get('file')
       if (!file || typeof file === 'string') return json({ error: 'No file provided' }, 400)
+      if (file.size > 250 * 1024 * 1024) return json({ error: 'File size must be less than 250MB.' }, 400)
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
       const fileId = `prod_${path[1]}_${Date.now()}_${(file.name || 'file').replace(/[^a-zA-Z0-9._-]/g, '')}`
@@ -3402,10 +3489,13 @@ async function processRoute(request, context = {}) {
       return json(await courseService.deleteLesson(creatorId, path[1]))
     }
     if (path[0] === 'lessons' && path[1] && path[2] === 'file' && method === 'POST') {
+      const existingLesson = await lessonsRepo.getForCreator(path[1], creatorId)
+      if (!existingLesson) throw httpError(404, 'Lesson not found')
       const form = await request.formData()
       const file = form.get('file')
       if (!file || typeof file === 'string') return json({ error: 'No file provided' }, 400)
       if (!file.type || !file.type.includes('pdf')) return json({ error: 'Only PDF files are allowed' }, 400)
+      if (file.size > 50 * 1024 * 1024) return json({ error: 'File size must be less than 50MB.' }, 400)
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
       const fileId = `lesson_${path[1]}_${Date.now()}_${(file.name || 'file').replace(/[^a-zA-Z0-9._-]/g, '')}`
@@ -3426,6 +3516,11 @@ async function processRoute(request, context = {}) {
       }
       return json({ orders: await ordersRepo.list(creatorId) })
     }
+    if (path[0] === 'orders' && path[1] && !path[2] && method === 'GET') {
+      const order = await ordersRepo.getForCreator(path[1], creatorId)
+      if (!order) throw httpError(404, 'Order not found')
+      return json({ order })
+    }
     if (route === '/customers' && method === 'GET') {
       const page = url.searchParams.get('page')
       const limit = url.searchParams.get('limit')
@@ -3435,9 +3530,45 @@ async function processRoute(request, context = {}) {
       }
       return json({ customers: await customersRepo.list(creatorId) })
     }
+    if (path[0] === 'customers' && path[1] && !path[2] && method === 'GET') {
+      const customer = await customersRepo.get(path[1], creatorId)
+      if (!customer) throw httpError(404, 'Customer not found')
+      return json({ customer })
+    }
     if (route === '/analytics/overview' && method === 'GET') {
       const days = parseInt(url.searchParams.get('days') || '30', 10)
-      return json(await analyticsService.overview(creatorId, days))
+      const productId = url.searchParams.get('productId') || undefined
+      const from = url.searchParams.get('from') || undefined
+      const to = url.searchParams.get('to') || undefined
+      const view = url.searchParams.get('view')
+
+      await creatorSubscriptionService.requireEntitlement(creatorId, 'basicAnalytics')
+      if (days > 30 || productId || from || to || view === 'advanced') {
+        await creatorSubscriptionService.requireEntitlement(creatorId, 'advancedAnalytics')
+      }
+      return json(await analyticsService.overview(creatorId, days, { productId, from, to }))
+    }
+    if (route === '/analytics/advanced' && method === 'GET') {
+      await creatorSubscriptionService.requireEntitlement(creatorId, 'advancedAnalytics')
+      const days = parseInt(url.searchParams.get('days') || '30', 10)
+      const productId = url.searchParams.get('productId') || undefined
+      const from = url.searchParams.get('from') || undefined
+      const to = url.searchParams.get('to') || undefined
+      return json(await analyticsService.overview(creatorId, days, { productId, from, to }))
+    }
+    if (route === '/export' && method === 'GET') {
+      await creatorSubscriptionService.requireEntitlement(creatorId, 'dataExport')
+      const dataset = url.searchParams.get('dataset') || 'products'
+      const from = url.searchParams.get('from') || undefined
+      const to = url.searchParams.get('to') || undefined
+      const { csv, filename } = await exportService.exportDataset(creatorId, dataset, { from, to })
+      return new NextResponse(csv, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      })
     }
 
     return json({ error: `Route ${route} not found` }, 404)

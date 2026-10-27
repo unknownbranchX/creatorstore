@@ -288,7 +288,7 @@ export default function CreatorSubscribePage() {
                 Save 20% vs monthly
               </div>
             )}
-            <p className="text-xs text-[#A1A1AA] mt-2">Unlimited products, up to 3 AutoDM campaigns &amp; analytics.</p>
+            <p className="text-xs text-[#A1A1AA] mt-2">Unlimited products, Instagram Auto-DMs, basic analytics &amp; up to 3 pages.</p>
           </button>
 
           <button
@@ -312,7 +312,7 @@ export default function CreatorSubscribePage() {
                 Save 20% vs monthly
               </div>
             )}
-            <p className="text-xs text-[#A1A1AA] mt-2">Unlimited AutoDM campaigns, lead export &amp; advanced analytics.</p>
+            <p className="text-xs text-[#A1A1AA] mt-2">Advanced analytics, data export, remove branding &amp; unlimited pages.</p>
           </button>
         </div>
 
@@ -339,15 +339,15 @@ export default function CreatorSubscribePage() {
           <div className="space-y-2 pt-2 border-t border-white/10 text-xs font-semibold text-[#F4F2EC]">
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-[#C7F000] shrink-0 stroke-[3]" />
-              <span>0% CreatorStore platform fee on digital sales</span>
+              <span>0% CreatorStore platform transaction fees</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-[#C7F000] shrink-0 stroke-[3]" />
-              <span>{isPro ? 'Unlimited Instagram AutoDM campaigns' : 'Up to 3 Instagram AutoDM campaigns'}</span>
+              <span>Unlimited Instagram Auto-DMs</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-[#C7F000] shrink-0 stroke-[3]" />
-              <span>{isPro ? 'Priority features + Lead export + Advanced analytics' : 'Standard storefront customization + Basic analytics'}</span>
+              <span>{isPro ? 'Advanced analytics + Data export + Remove branding' : 'Custom storefront designs + Basic analytics + Up to 3 pages'}</span>
             </div>
           </div>
         </div>

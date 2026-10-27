@@ -17,9 +17,12 @@ import {
   Check, UserCheck, AlertCircle, RefreshCw, X, FileText,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '@/components/auth/AuthContext'
 
 export default function FormsPage() {
   const { setHeaderConfig } = useDashboardHeader()
+  const { subscription } = useAuth()
+  const isPro = subscription?.planId === 'PRO' || subscription?.plan === 'PRO' || Boolean(subscription?.entitlements?.dataExport || subscription?.entitlements?.leadExport)
 
   // Primary navigation tabs: 'inbox' | 'forms' | 'subscribers'
   const [activeTab, setActiveTab] = useState('inbox')
@@ -280,6 +283,10 @@ export default function FormsPage() {
 
   // Export Subscribers to CSV
   function exportSubscribersCSV() {
+    if (!isPro) {
+      toast.error('Data export is a Pro feature. Upgrade to Pro to export subscribers.')
+      return
+    }
     if (!subscribers || subscribers.length === 0) {
       toast.error('No subscribers to export')
       return

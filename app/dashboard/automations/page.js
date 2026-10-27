@@ -16,12 +16,13 @@ import {
 import {
   Bot, Plus, Loader2, Instagram, CheckCircle2, PauseCircle, PlayCircle,
   Edit, Trash2, ArrowRight, MessageSquare, Sparkles, AlertTriangle, ExternalLink,
-  MoreHorizontal, Link as LinkIcon, Zap, Send, Eye, MousePointerClick, ShoppingBag
+  MoreHorizontal, Link as LinkIcon, Zap, Send, Eye, MousePointerClick, ShoppingBag, Clock
 } from 'lucide-react'
 
 import { useDashboardHeader } from '@/components/dashboard/HeaderContext'
 import CreateAutomationModal from '@/components/automations/CreateAutomationModal'
 import ConnectInstagramModal from '@/components/automations/ConnectInstagramModal'
+import QueueActivityTab from '@/components/automations/QueueActivityTab'
 
 export default function AutomationsPage() {
   const router = useRouter()
@@ -288,6 +289,18 @@ export default function AutomationsPage() {
           >
             All ({automations.length})
           </button>
+
+          <button
+            onClick={() => setActiveTab('QUEUE')}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'QUEUE'
+                ? 'bg-[#1F1F1F] text-[#FFFFFF]'
+                : 'bg-[#FFFFFF] text-[#6F6F6B] hover:text-[#1F1F1F] hover:bg-[#F5F5F3] border border-[#E5E5E3]'
+            }`}
+          >
+            <Clock className="h-3.5 w-3.5" />
+            Queue Activity
+          </button>
         </div>
 
         {/* Free / Limit Usage Status Badge */}
@@ -297,8 +310,10 @@ export default function AutomationsPage() {
         </div>
       </div>
 
-      {/* Loading state */}
-      {loading ? (
+      {/* Queue Activity Tab View */}
+      {activeTab === 'QUEUE' ? (
+        <QueueActivityTab />
+      ) : loading ? (
         <div className="flex h-64 items-center justify-center bg-[#FFFFFF] rounded-[24px] border border-[#E5E5E3] shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
           <Loader2 className="h-8 w-8 animate-spin text-[#1F1F1F]" />
         </div>

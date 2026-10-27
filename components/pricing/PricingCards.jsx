@@ -1,23 +1,8 @@
 'use client'
 
-import React from 'react'
+import { CREATOR_FEATURES, PRO_FEATURES } from '@/lib/plans'
 
-export const CREATOR_FEATURES = [
-  'Single bio link storefront',
-  'Unlimited digital products & sales',
-  'Instant checkout & digital delivery',
-  '0% CreatorStore platform fees',
-  'Built-in UPI, cards & Stripe settlement',
-  'Customer lead & email collection',
-]
-
-export const PRO_FEATURES = [
-  'Unlimited Instagram Auto-DMs',
-  'Meta Graph API Delivery Guard protection',
-  'Custom branded domain connection',
-  'Discount coupons & promo codes',
-  'Priority email & Discord support',
-]
+export { CREATOR_FEATURES, PRO_FEATURES }
 
 export function CreatorPricingCard({
   pricing,

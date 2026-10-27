@@ -25,9 +25,13 @@ async function runProPlanMarketingEntitlementTests() {
     assert(pricing.PRO.priceInr === 999, 'Pro plan default price is ₹999')
 
     const proConfig = getPlanConfig('PRO')
-    assert(proConfig.displayFeatures.includes('Leads & Lead Magnets'), 'Pro displayFeatures contains Leads & Lead Magnets')
-    assert(proConfig.displayFeatures.includes('Coupons & Discounts'), 'Pro displayFeatures contains Coupons & Discounts')
-    assert(proConfig.displayFeatures.includes('Email Broadcasts'), 'Pro displayFeatures contains Email Broadcasts')
+    assert(proConfig.displayFeatures.includes('Advanced analytics'), 'Pro displayFeatures contains Advanced analytics')
+    assert(proConfig.displayFeatures.includes('Data export'), 'Pro displayFeatures contains Data export')
+    assert(proConfig.displayFeatures.includes('Remove CreatorStore branding'), 'Pro displayFeatures contains Remove CreatorStore branding')
+    assert(proConfig.displayFeatures.includes('Unlimited pages on your storefront'), 'Pro displayFeatures contains Unlimited pages on your storefront')
+    assert(!proConfig.displayFeatures.includes('Discount coupons & promo codes'), 'Pro displayFeatures does NOT contain removed coupons feature')
+    assert(!proConfig.displayFeatures.includes('Unlimited Instagram Auto-DMs'), 'Pro displayFeatures does NOT contain removed Instagram Auto-DMs feature')
+    assert(!proConfig.displayFeatures.includes('Custom branded domain connection'), 'Pro displayFeatures does NOT contain removed domain connection feature')
     assert(!proConfig.displayFeatures.some(f => f.toLowerCase().includes('ai feature')), 'Pro displayFeatures does NOT contain AI feature line')
 
     // Entitlement tests

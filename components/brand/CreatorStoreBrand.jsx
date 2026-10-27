@@ -90,7 +90,7 @@ export const SIZES = {
  */
 export function CreatorStoreMark({
   size = 'md',
-  color = 'brand', // 'brand' (#FF3B20) | 'dark' (#000000) | 'white' (#FFFFFF) | 'inherit'
+  color = 'brand', // 'brand' | 'dark' | 'white' | 'inherit'
   className = '',
   style = {},
   ariaLabel = 'CreatorStore',
@@ -99,26 +99,15 @@ export function CreatorStoreMark({
   const isCustomClass = className.includes('h-') || className.includes('w-')
   const sizeClasses = isCustomClass ? className : `${sizeConfig.iconSize} ${className}`
 
-  let fillHex = BRAND_COLOR
-  if (color === 'dark') fillHex = '#000000'
-  else if (color === 'white') fillHex = '#FFFFFF'
-  else if (color === 'inherit') fillHex = 'currentColor'
-  else if (color.startsWith('#')) fillHex = color
-
   return (
-    <svg
-      viewBox="0 0 100 100"
-      fill={fillHex}
-      aria-label={ariaLabel}
+    <img
+      src="/brand/creatorstore-logo.png"
+      alt={ariaLabel || 'CreatorStore'}
+      aria-label={ariaLabel || 'CreatorStore'}
       role="img"
-      className={`aspect-square shrink-0 select-none block transition-transform duration-200 group-hover:scale-105 ${sizeClasses}`}
+      className={`aspect-square shrink-0 select-none object-contain rounded-full transition-transform duration-200 group-hover:scale-105 ${sizeClasses}`}
       style={style}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {CREATORSTORE_DOTS.map((dot) => (
-        <circle key={dot.key} cx={dot.cx} cy={dot.cy} r={dot.r} />
-      ))}
-    </svg>
+    />
   )
 }
 

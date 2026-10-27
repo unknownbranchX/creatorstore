@@ -30,7 +30,7 @@ const playfair = localFont({
 
 export const metadata = {
   metadataBase: new URL(getAppUrl()),
-  title: 'CreatorStore — Turn Your Audience Into Customers',
+  title: 'CreatorStore',
   description: 'Create your creator storefront, sell digital products, online courses, and 1:1 coaching, share one link, and turn Instagram engagement into sales.',
   openGraph: {
     title: 'CreatorStore — Turn Your Audience Into Customers',

@@ -55,6 +55,8 @@ model User {
   formSubmissions       FormSubmission[]
   newsletterSubscribers NewsletterSubscriber[]
   notifications         Notification[]
+  autoDmQueueJobs       AutoDmQueueJob[]
+  autoDmRateLimits      AutoDmRateLimit[]
 
   @@map("users")
 }
@@ -100,6 +102,7 @@ model Customer {
 
   @@unique([creatorId, email])
   @@index([country], map: "idx_customers_country")
+  @@index([creatorId, createdAt(sort: Desc)], map: "idx_customers_creator_created_at")
   @@map("customers")
 }
 
@@ -144,6 +147,7 @@ model StoreSection {
   creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@index([creatorId, pageId], map: "idx_store_sections_creator_page")
+  @@index([creatorId, position(sort: Asc)], map: "idx_store_sections_creator_position")
   @@map("store_sections")
 }
 
@@ -248,6 +252,7 @@ model Product {
 
   @@unique([creatorId, slug])
   @@index([creatorId, slug], map: "idx_products_creator_slug")
+  @@index([creatorId, status, createdAt(sort: Desc)], map: "idx_products_creator_status_created")
   @@map("products")
 }
 
@@ -459,6 +464,8 @@ model Order {
   accessTokens ProductAccessToken[]
 
   @@index([creatorId, status], map: "idx_orders_creator_status")
+  @@index([creatorId, createdAt(sort: Desc)], map: "idx_orders_creator_created_at")
+  @@index([creatorId, productId, status], map: "idx_orders_creator_product_status")
   @@index([automationId, status], map: "idx_orders_automation_status")
   @@index([country], map: "idx_orders_country")
   @@map("orders")
@@ -529,6 +536,8 @@ model InstagramAccount {
 
   // Relations
   creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  queueJobs AutoDmQueueJob[]
+  rateLimit AutoDmRateLimit?
 
   @@map("instagram_accounts")
 }
@@ -565,6 +574,7 @@ model Automation {
   product          Product?          @relation(fields: [productId], references: [id], onDelete: Cascade)
   automationEvents AutomationEvent[]
   orders           Order[]
+  queueJobs        AutoDmQueueJob[]
 
   @@index([creatorId, status], map: "idx_automations_creator_status")
   @@index([platform, triggerType, triggerValue], map: "idx_automations_platform_trigger")
@@ -602,6 +612,97 @@ model AutomationEvent {
   @@index([automationId, eventType], map: "idx_automation_events_auto_type")
   @@index([commentId, eventType], map: "idx_automation_events_comment_type")
   @@map("automation_events")
+}
+
+model AutoDmQueueJob {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creatorId          String    @map("creator_id") @db.Uuid
+  instagramAccountId String?   @map("instagram_account_id") @db.Uuid
+  automationId       String?   @map("automation_id") @db.Uuid
+
+  dedupeKey          String    @unique @map("dedupe_key")
+  triggerType        String    @default("COMMENT") @map("trigger_type")
+  commentId          String?   @map("comment_id")
+  mediaId            String?   @map("media_id")
+  recipientId        String?   @map("recipient_id")
+  recipientUsername  String?   @map("recipient_username")
+
+  // Message payload details
+  message            String
+  quickReplies       Json?     @default("[]") @map("quick_replies")
+  commentReply       String?   @map("comment_reply")
+  destinationUrl     String?   @map("destination_url")
+  buttonText         String?   @map("button_text")
+
+  // Job lifecycle & execution
+  status             String    @default("PENDING") // PENDING, PROCESSING, RETRYING, SENT, FAILED, CANCELLED
+  attemptCount       Int       @default(0) @map("attempt_count")
+  maxAttempts        Int       @default(5) @map("max_attempts")
+  scheduledAt        DateTime  @default(now()) @map("scheduled_at") @db.Timestamptz
+  nextAttemptAt      DateTime? @default(now()) @map("next_attempt_at") @db.Timestamptz
+
+  // Distributed locking
+  lockedAt           DateTime? @map("locked_at") @db.Timestamptz
+  lockedBy           String?   @map("locked_by")
+  lockExpiresAt      DateTime? @map("lock_expires_at") @db.Timestamptz
+
+  // Results & Errors
+  sentAt             DateTime? @map("sent_at") @db.Timestamptz
+  failedAt           DateTime? @map("failed_at") @db.Timestamptz
+  providerMessageId  String?   @map("provider_message_id")
+  lastErrorCategory  String?   @map("last_error_category")
+  lastErrorMessage   String?   @map("last_error_message")
+  lastErrorDetails   Json?     @map("last_error_details")
+
+  isSimulation       Boolean   @default(false) @map("is_simulation")
+
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  creator          User              @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  automation       Automation?       @relation(fields: [automationId], references: [id], onDelete: SetNull)
+  instagramAccount InstagramAccount? @relation(fields: [instagramAccountId], references: [id], onDelete: SetNull)
+
+  @@index([status, scheduledAt, nextAttemptAt], map: "idx_auto_dm_queue_eligible")
+  @@index([isSimulation, status], map: "idx_auto_dm_queue_simulation")
+  @@index([creatorId, status], map: "idx_auto_dm_queue_creator_status")
+  @@index([instagramAccountId, status], map: "idx_auto_dm_queue_account_status")
+  @@index([lockExpiresAt], map: "idx_auto_dm_queue_lock_expires")
+  @@map("auto_dm_queue_jobs")
+}
+
+model AutoDmRateLimit {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  instagramAccountId String    @unique @map("instagram_account_id") @db.Uuid
+  creatorId          String    @map("creator_id") @db.Uuid
+
+  // Rate limiting state
+  lastSentAt         DateTime? @map("last_sent_at") @db.Timestamptz
+  hourlyStart        DateTime? @default(now()) @map("hourly_start") @db.Timestamptz
+  hourlyCount        Int       @default(0) @map("hourly_count")
+  minuteStart        DateTime? @default(now()) @map("minute_start") @db.Timestamptz
+  minuteCount        Int       @default(0) @map("minute_count")
+
+  // Safety margins & limits (Meta Instagram Private Reply conservative defaults)
+  minIntervalMs      Int       @default(3000) @map("min_interval_ms") // Minimum 3s between sends per account
+  maxPerHour         Int       @default(200) @map("max_per_hour")      // Headroom below Meta private reply limit
+  maxPerMinute       Int       @default(20) @map("max_per_minute")
+
+  // Throttling / Pause state
+  isPaused           Boolean   @default(false) @map("is_paused")
+  pauseReason        String?   @map("pause_reason")
+  pausedUntil        DateTime? @map("paused_until") @db.Timestamptz
+
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  creator          User             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId], map: "idx_auto_dm_rate_limits_creator")
+  @@map("auto_dm_rate_limits")
 }
 
 // ------------------------------------------------------------------------------

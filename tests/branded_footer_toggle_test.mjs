@@ -183,7 +183,7 @@ async function runTests() {
         plan: 'CREATOR',
         status: 'ACTIVE',
         amount: 6,
-        dodoSubscriptionId: 'sub_test_creator_123',
+        dodoSubscriptionId: `sub_test_creator_${Date.now()}`,
       },
     })
 

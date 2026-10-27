@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, LogOut, Check, X, Sparkles, User, Link2, Shield, Upload, Camera } from 'lucide-react'
+import { Loader2, LogOut, Check, X, Sparkles, User, Link2, Shield, Upload, Camera, Download, FileSpreadsheet, Zap } from 'lucide-react'
+import { useDashboardHeader } from '@/components/dashboard/HeaderContext'
 
 const CATEGORIES = ['Education', 'Fitness', 'Business', 'Marketing', 'Coding', 'Music', 'Art', 'Finance', 'Lifestyle', 'Photography', 'Coaching', 'Other']
 const SOCIALS = [['instagram', 'Instagram'], ['youtube', 'YouTube'], ['tiktok', 'TikTok'], ['x', 'X'], ['linkedin', 'LinkedIn'], ['website', 'Website']]
@@ -19,10 +20,52 @@ export default function SettingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { me, updateProfile: updateDashboardProfile, updateStore: updateDashboardStore, refreshMe } = useDashboard()
+  const { setPricingModalOpen } = useDashboardHeader()
   const [profile, setProfile] = useState({ name: '', bio: '', category: '', avatarUrl: '', socialLinks: {} })
   const [username, setUsername] = useState('')
   const [uState, setUState] = useState({ checking: false, available: null, error: null })
   const [saving, setSaving] = useState(false)
+  const [exportDataset, setExportDataset] = useState('products')
+  const [exportFrom, setExportFrom] = useState('')
+  const [exportTo, setExportTo] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [exportUpgradeRequired, setExportUpgradeRequired] = useState(false)
+
+  async function handleExportCsv() {
+    setExporting(true)
+    setExportUpgradeRequired(false)
+    try {
+      const q = new URLSearchParams({ dataset: exportDataset })
+      if (exportFrom) q.set('from', exportFrom)
+      if (exportTo) q.set('to', exportTo)
+      const res = await fetch(`/api/export?${q.toString()}`, {
+        headers: { Accept: 'text/csv' },
+      })
+      if (res.status === 403) {
+        setExportUpgradeRequired(true)
+        toast.error('Data export requires a Pro subscription')
+        return
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Export failed' }))
+        throw new Error(err.error || 'Export failed')
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `creatorstore-${exportDataset}-${Date.now()}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success(`${exportDataset.toUpperCase()} export downloaded successfully!`)
+    } catch (err) {
+      toast.error(err.message || 'Failed to export data')
+    } finally {
+      setExporting(false)
+    }
+  }
   const fileInputRef = useRef(null)
   const avatarSectionRef = useRef(null)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -398,6 +441,81 @@ export default function SettingsPage() {
           <Button variant="outline" onClick={saveUsername} disabled={username === storeSlug || !uState.available} className="font-bold text-xs border-[#E5E5E3] bg-[#FFFFFF] text-[#1F1F1F] hover:bg-[#F5F5F3] rounded-full min-h-[38px]">
             Update Store URL
           </Button>
+        </div>
+      </Section>
+
+      <Section title="Data Export" icon={Download}>
+        <div className="space-y-4">
+          <p className="text-xs text-[#6F6F6B]">
+            Export your CreatorStore business records as CSV files. Includes formula-injection defense and complete ownership isolation.
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-[#1F1F1F]">Dataset</Label>
+              <select
+                value={exportDataset}
+                onChange={(e) => setExportDataset(e.target.value)}
+                className="h-10 w-full rounded-full border border-[#E5E5E3] bg-[#FFFFFF] px-3.5 text-xs font-bold text-[#1F1F1F] outline-none focus:border-[#1F1F1F]"
+              >
+                <option value="products">Products</option>
+                <option value="orders">Orders</option>
+                <option value="sales">Sales &amp; Revenue</option>
+                <option value="leads">Customer Leads</option>
+                <option value="subscribers">Mailing List Subscribers</option>
+                <option value="analytics">Analytics Summary</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-[#1F1F1F]">From Date (Optional)</Label>
+              <Input
+                type="date"
+                value={exportFrom}
+                onChange={(e) => setExportFrom(e.target.value)}
+                className="h-10 text-xs rounded-full bg-[#FFFFFF] border-[#E5E5E3] text-[#1F1F1F]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-[#1F1F1F]">To Date (Optional)</Label>
+              <Input
+                type="date"
+                value={exportTo}
+                onChange={(e) => setExportTo(e.target.value)}
+                className="h-10 text-xs rounded-full bg-[#FFFFFF] border-[#E5E5E3] text-[#1F1F1F]"
+              />
+            </div>
+          </div>
+
+          {exportUpgradeRequired && (
+            <div className="p-4 rounded-[18px] bg-[#FFFBEB] border border-[#FDE68A] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-[#D97706] shrink-0" />
+                <span className="text-xs font-bold text-[#92400E]">
+                  Data Export is exclusive to Pro subscribers.
+                </span>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setPricingModalOpen(true)}
+                className="bg-[#1F1F1F] text-white hover:bg-black rounded-full text-xs font-bold shrink-0"
+              >
+                Upgrade to Pro
+              </Button>
+            </div>
+          )}
+
+          <div className="pt-1 flex items-center gap-3">
+            <Button
+              onClick={handleExportCsv}
+              disabled={exporting}
+              className="font-extrabold px-5 py-2.5 bg-[#1F1F1F] hover:bg-[#000000] text-white rounded-full transition-all duration-200 cursor-pointer min-h-[40px] text-xs gap-2"
+            >
+              {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+              {exporting ? 'Generating CSV...' : `Export ${exportDataset.toUpperCase()} (CSV)`}
+            </Button>
+          </div>
         </div>
       </Section>
 

@@ -9,9 +9,12 @@ import {
   Loader2, AlertCircle, RefreshCw, X, ArrowRight
 } from 'lucide-react'
 import { useDashboardHeader } from '@/components/dashboard/HeaderContext'
+import { useAuth } from '@/components/auth/AuthContext'
 
 export default function CreatorLeadsPage() {
   const { setHeaderConfig } = useDashboardHeader()
+  const { subscription } = useAuth()
+  const isPro = subscription?.planId === 'PRO' || subscription?.plan === 'PRO' || Boolean(subscription?.entitlements?.dataExport || subscription?.entitlements?.leadExport)
   const [leads, setLeads] = useState([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -63,6 +66,10 @@ export default function CreatorLeadsPage() {
   }
 
   function exportCSV() {
+    if (!isPro) {
+      toast.error('Data export is a Pro feature. Upgrade to Pro to export leads.')
+      return
+    }
     if (!leads.length) return toast.error('No leads to export')
     const headers = 'Name,Email,Source,Lead Magnet,Created At\n'
     const rows = leads.map(l => `"${l.name || ''}","${l.email}","${l.source || 'Storefront'}","${l.leadMagnetTitle || 'Lead Magnet'}","${l.createdAt}"`).join('\n')
