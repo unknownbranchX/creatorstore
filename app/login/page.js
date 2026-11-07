@@ -40,6 +40,26 @@ function LoginContent() {
     }
   }, [authLoading, isAuthenticated, user, profile, requestedDestination, router])
 
+  // Handle OAuth error params
+  useEffect(() => {
+    const errorParam = searchParams?.get('error')
+    const messageParam = searchParams?.get('message')
+    if (errorParam) {
+      let friendly = 'Google sign-in failed. Please try again.'
+      if (errorParam === 'google_cancelled') {
+        friendly = 'Google sign-in was cancelled.'
+      } else if (errorParam === 'google_unverified' || errorParam === 'unverified_google_email') {
+        friendly = 'Your Google email is not verified. Please verify your email with Google first.'
+      } else if (errorParam === 'state_mismatch' || errorParam === 'invalid_callback') {
+        friendly = 'Sign-in session expired or was invalid. Please try again.'
+      } else if (messageParam) {
+        friendly = decodeURIComponent(messageParam)
+      }
+      setErrorMessage(friendly)
+      toast.error(friendly)
+    }
+  }, [searchParams])
+
   async function onSubmit(e) {
     e.preventDefault()
     if (!form.email.trim() || !form.password || loading) return
@@ -79,9 +99,14 @@ function LoginContent() {
   }
 
   async function onGoogle() {
+    if (googleLoading || loading) return
     setGoogleLoading(true)
+    setErrorMessage('')
     try {
-      await startGoogleOAuth()
+      await startGoogleOAuth({
+        returnTo: requestedDestination,
+        action: 'login',
+      })
     } catch (err) {
       toast.error(err.message || 'Google sign-in is not available yet')
       setGoogleLoading(false)
@@ -290,7 +315,7 @@ function LoginContent() {
           <button
             type="button"
             onClick={onGoogle}
-            disabled={googleLoading}
+            disabled={googleLoading || loading}
             className="w-full h-[48px] rounded-full border border-[#D8DFFA] bg-[#FFFFFF] text-sm text-[#010619] font-semibold hover:bg-[#EEF1FB] cursor-pointer disabled:opacity-50 transition-colors flex items-center justify-center gap-2.5"
           >
             {googleLoading ? (

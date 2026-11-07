@@ -18,6 +18,10 @@ This manifest specifies every environment variable required by the **CreatorStor
 | `DIRECT_URL` | **Required** | **Secret** | Supabase PostgreSQL | `postgresql://postgres:[pass]@db.[ref].supabase.co:5432/postgres` | Build & Runtime | Worker, Cron |
 | `JWT_SECRET` | **Required** | **Secret** | Generated Cryptographic Secret | 64-char hex string (`openssl rand -hex 32`, min 32 chars) | Runtime | None |
 | `COOKIE_SECURE` | Optional | No | Platform Configuration | `true` (defaults to true in production) | Runtime | None |
+| `GOOGLE_CLIENT_ID` | **Required** (for Google Auth) | No | Google Cloud Console | `[client-id].apps.googleusercontent.com` | Runtime | None |
+| `GOOGLE_CLIENT_SECRET` | **Required** (for Google Auth) | **Secret** | Google Cloud Console | `GOCSPX-[alphanumeric_secret]` | Runtime | None |
+| `GOOGLE_REDIRECT_URI` | Optional | No | Platform Configuration | `https://creatorstore.store/api/auth/callback/google` | Runtime | None |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Optional | No | Google Cloud Console | `[client-id].apps.googleusercontent.com` | Build & Runtime | None |
 | `CORS_ORIGINS` | Optional | No | Platform Configuration | `https://creatorstore.store,https://*.creatorstore.store` (defaults to `*`) | Build & Runtime | None |
 | `NEXT_PUBLIC_SUPABASE_URL` | **Required** | No | Supabase Project Settings | `https://[project-ref].supabase.co` | Build & Runtime | None |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Required** | No | Supabase API Credentials | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (Anon key) | Build & Runtime | None |

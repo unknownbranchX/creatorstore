@@ -121,6 +121,26 @@ function SignupContent() {
     router.replace(target)
   }, [authLoading, isAuthenticated, user, profile, requestedDestination, router])
 
+  // Handle OAuth error params
+  useEffect(() => {
+    const errorParam = searchParams?.get('error')
+    const messageParam = searchParams?.get('message')
+    if (errorParam) {
+      let friendly = 'Google signup failed. Please try again.'
+      if (errorParam === 'google_cancelled') {
+        friendly = 'Google sign-in was cancelled.'
+      } else if (errorParam === 'google_unverified' || errorParam === 'unverified_google_email') {
+        friendly = 'Your Google email is not verified. Please verify your email with Google first.'
+      } else if (errorParam === 'state_mismatch' || errorParam === 'invalid_callback') {
+        friendly = 'Sign-in session expired or was invalid. Please try again.'
+      } else if (messageParam) {
+        friendly = decodeURIComponent(messageParam)
+      }
+      setSubmitError(friendly)
+      toast.error(friendly)
+    }
+  }, [searchParams])
+
   // Debounced username availability checker
   const checkAvailability = useCallback((slug) => {
     if (checkTimeoutRef.current) clearTimeout(checkTimeoutRef.current)
@@ -297,14 +317,20 @@ function SignupContent() {
 
   // Google OAuth Signup
   async function onGoogleSignup() {
+    if (googleLoading || loading) return
     setGoogleLoading(true)
     setSubmitError('')
     try {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && username) {
         sessionStorage.setItem(PENDING_USERNAME_KEY, username)
         localStorage.setItem(PENDING_USERNAME_KEY, username)
       }
-      await startGoogleOAuth()
+      await startGoogleOAuth({
+        returnTo: requestedDestination,
+        username: username || undefined,
+        action: 'signup',
+        role: 'CREATOR',
+      })
     } catch (err) {
       const msg = err.message || 'Google sign-in is not configured yet'
       setSubmitError(msg)

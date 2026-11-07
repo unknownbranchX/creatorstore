@@ -353,6 +353,68 @@ async function processRoute(request, context = {}) {
       return json(result)
     }
 
+    if (route === '/auth/google' && (method === 'GET' || method === 'POST')) {
+      const returnTo = url.searchParams.get('returnTo') || url.searchParams.get('redirectTo') || null
+      const username = url.searchParams.get('username') || null
+      const role = url.searchParams.get('role') || 'CREATOR'
+      const action = url.searchParams.get('action') || 'login'
+      const wantsJson = url.searchParams.get('format') === 'json' || url.searchParams.get('json') === 'true' || request.headers.get('accept')?.includes('application/json')
+
+      try {
+        const authRes = await authService.getGoogleAuthUrl({ returnTo, username, role, action })
+        if (wantsJson) {
+          return json(authRes)
+        }
+        if (authRes.url) {
+          return NextResponse.redirect(authRes.url)
+        }
+        return json(authRes)
+      } catch (err) {
+        if (wantsJson) {
+          return errorResponse(err)
+        }
+        const msg = encodeURIComponent(err.message || 'Google authentication unavailable')
+        return NextResponse.redirect(new URL(`/login?error=google_unavailable&message=${msg}`, getAppUrl()))
+      }
+    }
+
+    if ((route === '/auth/callback/google' || route === '/auth/google/callback') && method === 'GET') {
+      const error = url.searchParams.get('error')
+      const errorDescription = url.searchParams.get('error_description')
+      if (error) {
+        console.warn('[Google OAuth Callback] Access error from Google:', error, errorDescription)
+        const code = error === 'access_denied' ? 'google_cancelled' : 'google_error'
+        return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(code)}`, getAppUrl()))
+      }
+
+      const code = url.searchParams.get('code')
+      const state = url.searchParams.get('state')
+      if (!code || !state) {
+        return NextResponse.redirect(new URL('/login?error=invalid_callback', getAppUrl()))
+      }
+
+      try {
+        const result = await authService.handleGoogleCallback({ code, state })
+        const target = result.target || '/dashboard'
+        const redirectUrl = new URL(target, getAppUrl())
+        const res = NextResponse.redirect(redirectUrl)
+        return setSession(res, result.token)
+      } catch (err) {
+        console.error('[Google OAuth Callback] Error processing callback:', err.message)
+        const errCode = err.code || (err.status === 403 ? 'google_unverified' : 'google_auth_failed')
+        const msg = encodeURIComponent(err.message || 'Google authentication failed')
+        return NextResponse.redirect(new URL(`/login?error=${errCode}&message=${msg}`, getAppUrl()))
+      }
+    }
+
+    if (route === '/auth/google/session' && method === 'POST') {
+      const body = await request.json().catch(() => ({}))
+      const { accessToken, returnTo, username, role, action } = body
+      const result = await authService.handleSupabaseGoogleSession({ accessToken, returnTo, username, role, action })
+      const res = json({ ok: true, user: result.user, target: result.target })
+      return setSession(res, result.token)
+    }
+
     if ((route === '/cron/cleanup-otps' || (path[0] === 'cron' && path[1] === 'cleanup-otps')) && (method === 'GET' || method === 'POST')) {
       if (!validateCronSecret(request)) {
         return json({ ok: false, error: 'Unauthorized' }, 401)
