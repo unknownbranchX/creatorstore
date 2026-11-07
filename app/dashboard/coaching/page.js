@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import CoachingBookingWizardModal from '@/components/coaching/CoachingBookingWizardModal'
+import CreatorStoreLoader from '@/components/ui/CreatorStoreLoader'
 
 const TABS = [
   { id: 'upcoming', label: 'Upcoming' },
@@ -27,7 +28,12 @@ const TABS = [
 
 export default function CreatorCoachingDashboard() {
   return (
-    <Suspense fallback={<div className="p-8 text-[#6B7399]">Loading...</div>}>
+    <Suspense fallback={
+      <div className="p-12 flex flex-col items-center justify-center min-h-[50vh] select-none">
+        <CreatorStoreLoader size="lg" message="Loading coaching sessions..." />
+        <span className="text-xs font-semibold text-[#6F6F6B] mt-3">Loading coaching sessions...</span>
+      </div>
+    }>
       <CoachingDashboardContent />
     </Suspense>
   )

@@ -10,7 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, LogOut, Check, X, Sparkles, User, Link2, Shield, Upload, Camera, Download, FileSpreadsheet, Zap } from 'lucide-react'
+import { Loader2, LogOut, Check, X, Sparkles, User, Link2, Shield, Upload, Camera, Download, FileSpreadsheet, Zap, Trash2 } from 'lucide-react'
+import CreatorStoreLoader, { ButtonLoader } from '@/components/ui/CreatorStoreLoader'
+import { cn } from '@/lib/utils'
 import { useDashboardHeader } from '@/components/dashboard/HeaderContext'
 
 const CATEGORIES = ['Education', 'Fitness', 'Business', 'Marketing', 'Coding', 'Music', 'Art', 'Finance', 'Lifestyle', 'Photography', 'Coaching', 'Other']
@@ -69,6 +71,7 @@ export default function SettingsPage() {
   const fileInputRef = useRef(null)
   const avatarSectionRef = useRef(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadMessage, setUploadMessage] = useState(null)
   const [highlightAvatar, setHighlightAvatar] = useState(false)
 
   useEffect(() => {
@@ -89,29 +92,111 @@ export default function SettingsPage() {
   async function handleFileSelect(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file (PNG, JPEG, WEBP, GIF)')
+
+    setUploadMessage(null)
+
+    // 1. Validate file format
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']
+    if (!validImageTypes.includes(file.type) && !file.type.startsWith('image/')) {
+      const errorMsg = 'Please select a valid image file (JPEG, PNG, WebP, GIF)'
+      setUploadMessage({ type: 'error', text: errorMsg })
+      toast.error(errorMsg)
+      if (e.target) e.target.value = ''
       return
     }
 
-    // Immediate local preview
-    const reader = new FileReader()
-    reader.onload = (evt) => {
-      setProfile((prev) => ({ ...prev, avatarUrl: evt.target.result }))
+    // 2. Validate file size (10MB limit)
+    const MAX_BYTES = 10 * 1024 * 1024
+    if (file.size > MAX_BYTES) {
+      const errorMsg = 'Image file size must be less than 10MB.'
+      setUploadMessage({ type: 'error', text: errorMsg })
+      toast.error(errorMsg)
+      if (e.target) e.target.value = ''
+      return
     }
-    reader.readAsDataURL(file)
 
+    // Preserve existing image in case upload or database update fails
+    const previousAvatarUrl = profile.avatarUrl
     setUploadingImage(true)
+
     try {
       const formData = new FormData()
       formData.append('file', file)
       const res = await api.upload('/upload', formData)
-      if (res.url) {
-        setProfile((prev) => ({ ...prev, avatarUrl: res.url }))
-        toast.success('Profile image uploaded! Click "Save Profile" below to apply.')
+      if (!res?.url) {
+        throw new Error('Upload failed: No image URL returned from server')
       }
+
+      const nextUrl = res.url
+      const currentTheme = me?.store?.theme || {}
+      const themeToSave = { ...currentTheme, avatarUrl: nextUrl }
+
+      // 3. Immediately persist to database across both creator profile and store records
+      const [profileRes, storeRes] = await Promise.all([
+        api.patch('/me/profile', { avatarUrl: nextUrl }),
+        api.patch('/store', { avatarUrl: nextUrl, theme: themeToSave }),
+      ])
+
+      const savedAvatarUrl = profileRes?.profile?.avatarUrl || profileRes?.avatarUrl || nextUrl
+      const updatedStore = storeRes?.store || storeRes
+
+      // 4. Update local state and global dashboard context (updates sidebar, header, etc.)
+      setProfile((prev) => ({ ...prev, avatarUrl: savedAvatarUrl }))
+      if (updateDashboardProfile) updateDashboardProfile({ avatarUrl: savedAvatarUrl })
+      if (updateDashboardStore && updatedStore) updateDashboardStore(updatedStore)
+
+      if (refreshMe) await refreshMe()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('creatorstore:setup-updated'))
+      }
+
+      setUploadMessage({ type: 'success', text: 'Profile image updated successfully!' })
+      toast.success('Profile image updated successfully!')
     } catch (err) {
-      toast.error(err.message || 'Failed to upload profile image')
+      // Restore previous image so no data is lost
+      setProfile((prev) => ({ ...prev, avatarUrl: previousAvatarUrl }))
+      const errorMsg = err.message || 'Failed to update profile image'
+      setUploadMessage({ type: 'error', text: errorMsg })
+      toast.error(errorMsg)
+    } finally {
+      setUploadingImage(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  async function handleRemoveImage() {
+    const previousAvatarUrl = profile.avatarUrl
+    setUploadingImage(true)
+    setUploadMessage(null)
+    try {
+      const currentTheme = me?.store?.theme || {}
+      const themeToSave = { ...currentTheme, avatarUrl: '' }
+
+      // 1. Immediately persist removal to database across both profile and store
+      const [profileRes, storeRes] = await Promise.all([
+        api.patch('/me/profile', { avatarUrl: '' }),
+        api.patch('/store', { avatarUrl: '', theme: themeToSave }),
+      ])
+
+      const updatedStore = storeRes?.store || storeRes
+
+      // 2. Update local state and global dashboard context
+      setProfile((prev) => ({ ...prev, avatarUrl: '' }))
+      if (updateDashboardProfile) updateDashboardProfile({ avatarUrl: '' })
+      if (updateDashboardStore && updatedStore) updateDashboardStore(updatedStore)
+
+      if (refreshMe) await refreshMe()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('creatorstore:setup-updated'))
+      }
+
+      setUploadMessage({ type: 'success', text: 'Profile image removed successfully.' })
+      toast.success('Profile image removed successfully.')
+    } catch (err) {
+      setProfile((prev) => ({ ...prev, avatarUrl: previousAvatarUrl }))
+      const errorMsg = err.message || 'Failed to remove profile image'
+      setUploadMessage({ type: 'error', text: errorMsg })
+      toast.error(errorMsg)
     } finally {
       setUploadingImage(false)
     }
@@ -120,6 +205,7 @@ export default function SettingsPage() {
   const [storeName, setStoreName] = useState('')
 
   useEffect(() => {
+    if (uploadingImage) return // Prevent clobbering in-flight avatar updates
     if (me?.profile) {
       setProfile({
         name: me.profile.name || '',
@@ -133,7 +219,7 @@ export default function SettingsPage() {
       setStoreName(me.store.storeName || me.profile?.name || '')
       setUsername(me.store.username || me.store.slug || '')
     }
-  }, [me])
+  }, [me, uploadingImage])
 
   useEffect(() => {
     if (!username || username === (me?.store?.username || me?.store?.slug)) { setUState({ checking: false, available: null, error: null }); return }
@@ -153,6 +239,7 @@ export default function SettingsPage() {
 
       let updatedStore = null
       const effectiveStoreName = (storeName || profile.name || '').trim()
+      const currentTheme = me?.store?.theme || {}
       const storePatch = {}
       if (normalizedNewUsername && normalizedNewUsername !== currentStoreUsername) {
         if (uState.available === false) {
@@ -166,15 +253,17 @@ export default function SettingsPage() {
       if (profile.bio !== undefined && profile.bio !== me?.store?.bio) {
         storePatch.bio = profile.bio
       }
-      if (profile.avatarUrl !== undefined && profile.avatarUrl !== me?.store?.avatarUrl) {
+      if (profile.avatarUrl !== undefined) {
         storePatch.avatarUrl = profile.avatarUrl
+        storePatch.theme = { ...currentTheme, avatarUrl: profile.avatarUrl || '' }
       }
       if (Object.keys(storePatch).length > 0) {
         const storeRes = await api.patch('/store', storePatch)
         updatedStore = storeRes.store || storeRes
       }
 
-      const pRes = await api.patch('/creator/profile', {
+      // Canonical profile update endpoint (supported on /me/profile and /creator/profile)
+      const pRes = await api.patch('/me/profile', {
         name: profile.name,
         bio: profile.bio,
         category: profile.category,
@@ -183,8 +272,9 @@ export default function SettingsPage() {
       })
 
       const updatedProfile = pRes.profile || pRes
+      const finalStore = pRes.store || updatedStore
       if (updateDashboardProfile) updateDashboardProfile(updatedProfile)
-      if (updatedStore && updateDashboardStore) updateDashboardStore(updatedStore)
+      if (finalStore && updateDashboardStore) updateDashboardStore(finalStore)
       if (refreshMe) await refreshMe()
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('creatorstore:setup-updated'))
@@ -242,7 +332,13 @@ export default function SettingsPage() {
     window.location.href = '/login'
   }
 
-  if (!me) return <div className="flex h-[60vh] items-center justify-center bg-transparent"><Loader2 className="h-8 w-8 animate-spin text-[#1F1F1F]" /></div>
+  if (!me) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center bg-transparent">
+        <CreatorStoreLoader size="lg" message="Loading settings..." />
+      </div>
+    )
+  }
 
   const storeSlug = me?.store?.slug || me?.store?.username || username
   const publicStoreUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${storeSlug}`
@@ -285,64 +381,106 @@ export default function SettingsPage() {
       </div>
 
       <Section title="Store & Brand Identity" icon={User}>
+        {/* Profile Image Direct Upload Component */}
         <div
           ref={avatarSectionRef}
           id="profile-image-section"
-          className={`flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-2 p-3 rounded-[20px] transition-all duration-300 ${
+          className={`flex flex-col sm:flex-row items-start sm:items-center gap-5 p-4 rounded-[20px] bg-[#FAFAFA] border border-[#E5E5E3] transition-all duration-300 ${
             highlightAvatar ? 'ring-2 ring-[#1F1F1F] bg-[#F7F7F6]' : ''
           }`}
         >
+          {/* Circular profile image preview */}
           <div
-            onClick={() => fileInputRef.current?.click()}
-            className="group relative h-16 w-16 sm:h-20 sm:w-20 overflow-hidden rounded-full bg-[#F2F1EF] border border-[#E5E5E3] shrink-0 cursor-pointer transition-transform hover:scale-105"
-            title="Click to select profile image from local files"
+            onClick={() => !uploadingImage && fileInputRef.current?.click()}
+            className="group relative h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-full bg-[#F2F1EF] border-2 border-[#E5E5E3] shrink-0 cursor-pointer transition-all hover:scale-105 shadow-sm"
+            title={uploadingImage ? 'Uploading image...' : 'Click to select profile image'}
           >
             {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
+              <img src={profile.avatarUrl} alt="Profile" className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-xl sm:text-2xl font-black text-[#1F1F1F]">
-                {(storeName || profile.name || 'C')[0]}
+              <div className="flex h-full w-full items-center justify-center text-2xl font-black text-[#1F1F1F]">
+                {(storeName || profile.name || 'C')[0]?.toUpperCase()}
               </div>
             )}
-            <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
-              <Camera className="h-5 w-5" />
-            </div>
+
+            {/* Hover overlay with Camera icon */}
+            {!uploadingImage && (
+              <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white">
+                <Camera className="h-5 w-5" />
+                <span className="text-[10px] font-bold mt-0.5">Change</span>
+              </div>
+            )}
+
+            {/* Clear loading state during upload */}
             {uploadingImage && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white">
-                <Loader2 className="h-5 w-5 animate-spin text-white" />
+              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white p-2">
+                <Loader2 className="h-5 w-5 animate-spin text-[#FF3828]" />
+                <span className="text-[9px] font-bold mt-1 text-white">Uploading...</span>
               </div>
             )}
           </div>
 
+          {/* Hidden native file input */}
           <input
             type="file"
             ref={fileInputRef}
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
             className="hidden"
             onChange={handleFileSelect}
+            disabled={uploadingImage}
           />
 
-          <div className="flex-1 space-y-2 w-full min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-xs font-bold text-[#1F1F1F]">Profile Image</Label>
+          {/* Upload Controls & Feedback */}
+          <div className="flex-1 space-y-2.5 w-full min-w-0">
+            <div>
+              <Label className="text-sm font-bold text-[#1F1F1F] block">Profile Image</Label>
+              <p className="text-xs text-[#6F6F6B] mt-0.5">
+                Recommended: Square JPG, PNG, or WebP. Max size 10MB.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingImage}
-                className="h-8 rounded-full text-xs font-bold gap-1.5 border-[#E5E5E3] bg-[#FFFFFF] text-[#1F1F1F] hover:bg-[#F5F5F3] shrink-0"
+                className="h-9 px-4 rounded-full text-xs font-bold gap-2 border-[#E5E5E3] bg-[#FFFFFF] text-[#1F1F1F] hover:bg-[#F2F1EF] transition-all cursor-pointer shadow-sm"
               >
-                {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                {uploadingImage ? 'Uploading...' : 'Upload File'}
+                {uploadingImage ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#FF3828]" />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-3.5 w-3.5" />
+                    <span>Upload Image</span>
+                  </>
+                )}
               </Button>
+
+              {Boolean(profile.avatarUrl) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveImage}
+                  disabled={uploadingImage}
+                  className="h-9 px-3 rounded-full text-xs font-semibold text-[#DC2626] hover:bg-[#FEE2E2]/60 hover:text-[#B91C1C] transition-all cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  Remove Image
+                </Button>
+              )}
             </div>
-            <Input
-              value={profile.avatarUrl}
-              onChange={(e) => setProfile({ ...profile, avatarUrl: e.target.value })}
-              placeholder="https://... or select local file"
-              className="text-xs rounded-full bg-[#FFFFFF] border-[#E5E5E3] text-[#1F1F1F] placeholder-[#999995] focus:border-[#1F1F1F]"
-            />
+
+            {uploadMessage && (
+              <p className={cn("text-xs font-medium mt-1", uploadMessage.type === 'error' ? "text-[#DC2626]" : "text-[#16A34A]")}>
+                {uploadMessage.text}
+              </p>
+            )}
           </div>
         </div>
 
@@ -392,8 +530,7 @@ export default function SettingsPage() {
 
         <div className="pt-2">
           <Button onClick={saveProfile} disabled={saving} className="font-extrabold px-6 py-3 bg-[#1F1F1F] hover:bg-[#000000] active:bg-[#111111] text-white rounded-full transition-all duration-200 cursor-pointer min-h-[44px]">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin text-white mr-2" /> : null}
-            Save Store &amp; Profile Settings
+            {saving ? <ButtonLoader text="Saving..." /> : 'Save Store & Profile Settings'}
           </Button>
         </div>
       </Section>

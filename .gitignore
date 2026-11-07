@@ -1,8 +1,57 @@
+# ==========================================
+# CREATORSTORE — GITIGNORE CONFIGURATION
+# ==========================================
 
+# Dependencies
 node_modules/
-.next/
-.DS_Store
+.pnp
+.pnp.js
 
+# Next.js Build Outputs & Cache
+.next/
+out/
+build/
+dist/
+.turbo/
+
+# Production & Local Backups and Temporary Scratch
+backups/
+scratch/
+*.sql.backup
+*.dump
+
+# Environment Files (Protect all secrets, preserve example template)
 .env
 .env.*
 !.env.example
+
+# Testing, Reports & Coverage
+coverage/
+test_reports/
+*.lcov
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# Debug Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Operating System & Cache Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor Configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace

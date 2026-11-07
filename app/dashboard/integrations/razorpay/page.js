@@ -12,6 +12,7 @@ import {
   ShieldCheck, CheckCircle2, ArrowRight, Loader2, CreditCard, Sparkles,
   DollarSign, ArrowUpRight, Lock, AlertTriangle, Building, User, Banknote, RefreshCw
 } from 'lucide-react'
+import CreatorStoreLoader from '@/components/ui/CreatorStoreLoader'
 
 export default function RazorpayPaymentsPage() {
   const [dashboard, setDashboard] = useState(null)
@@ -543,7 +544,7 @@ export default function RazorpayPaymentsPage() {
                         Back
                       </Button>
                       <Button type="submit" disabled={submitting} className="w-2/3 font-extrabold bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/90 text-white h-11 rounded-full">
-                        {submitting ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : 'Save Payout Details'}
+                        {submitting ? <CreatorStoreLoader variant="button" text="Saving..." size="xs" /> : 'Save Payout Details'}
                       </Button>
                     </div>
                   </>
@@ -553,9 +554,9 @@ export default function RazorpayPaymentsPage() {
 
             {/* STEP 4: Verification Loading */}
             {step === 4 && (
-              <div className="text-center py-8 space-y-4">
-                <Loader2 className="h-12 w-12 text-[var(--accent-primary)] animate-spin mx-auto" />
-                <h3 className="text-xl font-black text-white">Verifying Payout Account...</h3>
+              <div className="text-center py-8 space-y-4 flex flex-col items-center justify-center select-none">
+                <CreatorStoreLoader size="2xl" badge badgeBg="#000000" className="mx-auto" />
+                <h3 className="text-xl font-black text-white mt-3">Verifying Payout Account...</h3>
                 <p className="text-xs text-[var(--text-secondary,#A3A3A3)] font-medium">Communicating with payout verification engine.</p>
               </div>
             )}

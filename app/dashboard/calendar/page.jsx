@@ -16,6 +16,7 @@ import BookingDetailsModal from '@/components/calendar/BookingDetailsModal'
 import RescheduleModal from '@/components/calendar/RescheduleModal'
 import CancelBookingModal from '@/components/calendar/CancelBookingModal'
 import AvailabilitySettingsModal from '@/components/calendar/AvailabilitySettingsModal'
+import CreatorStoreLoader from '@/components/ui/CreatorStoreLoader'
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Plus,
   Search, Filter, Loader2, AlertCircle, RefreshCw, Sparkles, CheckCircle2,
@@ -385,9 +386,9 @@ export default function CalendarPage() {
           </div>
         ) : loading && bookings.length === 0 ? (
           /* LOADING SKELETON */
-          <div className="flex-1 flex flex-col items-center justify-center p-12 bg-[#FFFFFF] border border-[#E5E5E3] rounded-[20px] text-center space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-            <Loader2 className="h-8 w-8 animate-spin text-[#1F1F1F]" />
-            <span className="text-xs font-medium text-[#6F6F6B]">
+          <div className="flex-1 flex flex-col items-center justify-center p-12 bg-[#FFFFFF] border border-[#E5E5E3] rounded-[20px] text-center space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.04)] select-none">
+            <CreatorStoreLoader size="lg" message="Loading calendar sessions..." />
+            <span className="text-xs font-semibold text-[#6F6F6B]">
               Loading calendar sessions...
             </span>
           </div>

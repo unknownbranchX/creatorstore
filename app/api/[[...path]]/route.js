@@ -263,8 +263,11 @@ async function processRoute(request, context = {}) {
 
       const buffer = Buffer.from(arrayBuffer)
       const sanitizedName = (file.name || 'avatar').replace(/[^a-zA-Z0-9._-]/g, '')
+      const ext = sanitizedName.includes('.') ? sanitizedName.split('.').pop() : (mime.split('/')[1] || 'jpg')
+      const baseName = sanitizedName.includes('.') ? sanitizedName.substring(0, sanitizedName.lastIndexOf('.')) : sanitizedName
+      const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
       const userId = user ? user.id : 'pub'
-      const fileKey = `${userId}/media/${Date.now()}_${sanitizedName}`
+      const fileKey = `${userId}/media/${baseName}_${uniqueSuffix}.${ext}`
 
       let bucketName = 'creator-assets'
       let uploadRes = await supabaseAdmin.storage.from(bucketName).upload(fileKey, buffer, { contentType: mime, upsert: true })
@@ -287,7 +290,7 @@ async function processRoute(request, context = {}) {
       try {
         const rawKey = path.slice(1).join('/')
         const key = decodeURIComponent(rawKey)
-        if (!key) return json({ error: 'File path missing' }, 400)
+        if (!key || key.includes('..') || key.startsWith('/')) return json({ error: 'Invalid or missing file path' }, 400)
 
         let { data: fileBuffer, error } = await supabaseAdmin.storage.from('creator-assets').download(key)
         if (error || !fileBuffer) {
@@ -1189,6 +1192,10 @@ async function processRoute(request, context = {}) {
         throw httpError(404, 'Product not found.')
       }
 
+      if (product.status !== 'PUBLISHED') {
+        throw httpError(404, 'Product is not available for claim.')
+      }
+
       // CRITICAL SERVER-SIDE PROTECTION: Only free products (price <= 0) can be claimed here!
       const productPrice = Number(product.price || 0)
       if (productPrice > 0) {
@@ -1855,13 +1862,19 @@ async function processRoute(request, context = {}) {
       // Delivery via JSON metadata
       if (url.searchParams.get('json') === 'true') {
         const signedUrl = await fileResult.getSignedUrl(120)
-        return json({
+        return NextResponse.json({
           success: true,
           downloadUrl: signedUrl,
           fileName: fileResult.fileName,
           fileSize: fileResult.fileSize,
           fileMime: fileResult.fileMime,
           expiresIn: 120,
+        }, {
+          headers: {
+            'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
         })
       }
 
@@ -1931,8 +1944,13 @@ async function processRoute(request, context = {}) {
     // ===== Student / Learning Routes =====
     if (path[0] === 'learning') {
       const user = await requireAuth(request).catch(() => null)
-      const studentEmail = user ? user.email : url.searchParams.get('email')
-      if (!studentEmail) return json({ error: 'Authentication required' }, 401)
+      const purchaseCookie = request.cookies.get(PURCHASE_SESSION_COOKIE)?.value
+      const purchaseSession = purchaseCookie ? purchaseOtpService.verifySessionToken(purchaseCookie) : null
+      const guestCookie = request.cookies.get('creatorstore_guest_session')?.value
+      const guestSession = guestAccessService.verifyGuestSession(guestCookie)
+
+      const studentEmail = user ? user.email : (purchaseSession?.email || guestSession?.email || null)
+      if (!studentEmail) return json({ error: 'Authentication required. Please log in or use your purchase access link.' }, 401)
 
       if (path[1] === 'my-courses' && method === 'GET') {
         return json({ courses: await learningService.getStudentCourses(studentEmail) })
@@ -1953,7 +1971,10 @@ async function processRoute(request, context = {}) {
         if (error || !fileBuffer) return json({ error: 'PDF file not found' }, 404)
         const headers = {
           'Content-Type': lesson.pdfFileMime || 'application/pdf',
-          'Content-Disposition': `attachment; filename="${(lesson.pdfFileName || 'lesson.pdf').replace(/"/g, '')}"`,
+          'Content-Disposition': `attachment; filename="${encodeURIComponent((lesson.pdfFileName || 'lesson.pdf').replace(/"/g, ''))}"`,
+          'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         }
         if (lesson.pdfFileSize) headers['Content-Length'] = String(lesson.pdfFileSize)
         return new NextResponse(fileBuffer, { status: 200, headers })
@@ -2447,7 +2468,13 @@ async function processRoute(request, context = {}) {
     // ===== Authenticated User Routes (CUSTOMER or CREATOR) =====
     const user = await requireAuth(request)
 
-    if (route === '/me/profile' && method === 'PATCH') {
+    if ((route === '/me/profile' || route === '/creator/profile') && method === 'GET') {
+      const profile = await profilesRepo.getByCreator(user.id).catch(() => null)
+      const store = await storesRepo.getByCreator(user.id).catch(() => null)
+      return json({ profile, store })
+    }
+
+    if ((route === '/me/profile' || route === '/creator/profile') && method === 'PATCH') {
       const body = await request.json()
       const existingStore = await storesRepo.getByCreator(user.id).catch(() => null)
       const profile = await meService.updateProfile(user.id, body)
@@ -3114,15 +3141,57 @@ async function processRoute(request, context = {}) {
     if (path[0] === 'products' && path[1] && path[2] === 'archive' && method === 'POST') {
       return json({ product: await productService.archive(creatorId, path[1]) })
     }
+    if (path[0] === 'products' && path[1] && path[2] === 'file' && method === 'DELETE') {
+      await productService.get(creatorId, path[1]) // ownership check
+      const product = await productService.attachFile(creatorId, path[1], {
+        fileId: null, fileName: null, fileSize: null, fileMime: null,
+      })
+      return json({ product })
+    }
     if (path[0] === 'products' && path[1] && path[2] === 'file' && method === 'POST') {
       await productService.get(creatorId, path[1]) // ownership check
       const form = await request.formData()
       const file = form.get('file')
       if (!file || typeof file === 'string') return json({ error: 'No file provided' }, 400)
+      if (file.size <= 0) return json({ error: 'File cannot be empty.' }, 400)
       if (file.size > 250 * 1024 * 1024) return json({ error: 'File size must be less than 250MB.' }, 400)
+
+      const DISALLOWED_MIMES = [
+        'application/x-msdownload', 'application/x-executable', 'application/x-dosexec',
+        'application/x-sh', 'application/x-shellscript', 'application/x-bat',
+        'application/x-csh', 'text/x-php', 'application/x-httpd-php'
+      ]
+      if (file.type && DISALLOWED_MIMES.includes(file.type.toLowerCase())) {
+        return json({ error: 'File type is not permitted for digital downloads.' }, 400)
+      }
+
+      const DISALLOWED_EXTENSIONS = [
+        '.exe', '.dll', '.so', '.dylib', '.bat', '.cmd', '.sh', '.bin',
+        '.msi', '.scr', '.vbs', '.wsf', '.cpl', '.pif', '.hta', '.jar',
+        '.php', '.phtml', '.cgi'
+      ]
+      const ALLOWED_EXTENSIONS = new Set([
+        '.pdf', '.epub', '.mobi', '.azw', '.azw3', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.rtf', '.csv', '.tsv', '.md',
+        '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2',
+        '.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a', '.wma', '.aiff',
+        '.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv',
+        '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.psd', '.ai', '.eps', '.fig', '.sketch', '.xd', '.raw', '.tiff', '.bmp', '.blend', '.fbx', '.obj', '.stl',
+        '.json', '.yaml', '.yml', '.xml', '.css', '.scss', '.preset', '.cube', '.dng', '.lrtemplate'
+      ])
+
+      const originalName = file.name || 'file'
+      const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/)
+      const ext = extMatch ? extMatch[0].toLowerCase() : ''
+      if (!ext || !ALLOWED_EXTENSIONS.has(ext) || DISALLOWED_EXTENSIONS.includes(ext)) {
+        return json({ error: 'Unsupported file type. Please upload a standard digital product file (e.g. PDF, ZIP, MP3, MP4, EPUB, PNG, DOCX).' }, 400)
+      }
+
+      const safeBaseName = originalName
+        .replace(/\.\.+/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
-      const fileId = `prod_${path[1]}_${Date.now()}_${(file.name || 'file').replace(/[^a-zA-Z0-9._-]/g, '')}`
+      const fileId = `prod_${path[1]}_${crypto.randomUUID()}_${safeBaseName}`
       await ensureBucket('product-files', false)
       const { error: uploadErr } = await supabaseAdmin.storage.from('product-files').upload(fileId, buffer, { contentType: file.type || 'application/octet-stream', upsert: true })
       if (uploadErr) {
@@ -3130,7 +3199,7 @@ async function processRoute(request, context = {}) {
         throw httpError(500, `Storage upload failed: ${uploadErr.message || 'Unknown error'}`)
       }
       const product = await productService.attachFile(creatorId, path[1], {
-        fileId, fileName: file.name || 'upload', fileSize: buffer.length, fileMime: file.type || 'application/octet-stream',
+        fileId, fileName: safeBaseName, fileSize: buffer.length, fileMime: file.type || 'application/octet-stream',
       })
       return json({ product })
     }
@@ -3488,20 +3557,44 @@ async function processRoute(request, context = {}) {
     if (path[0] === 'lessons' && path[1] && !path[2] && method === 'DELETE') {
       return json(await courseService.deleteLesson(creatorId, path[1]))
     }
+    if (path[0] === 'lessons' && path[1] && path[2] === 'file' && method === 'DELETE') {
+      const existingLesson = await lessonsRepo.getForCreator(path[1], creatorId)
+      if (!existingLesson) throw httpError(404, 'Lesson not found')
+      const lesson = await courseService.attachLessonPdf(creatorId, path[1], {
+        fileId: null, fileName: null, fileSize: null, fileMime: null,
+      })
+      return json({ lesson })
+    }
     if (path[0] === 'lessons' && path[1] && path[2] === 'file' && method === 'POST') {
       const existingLesson = await lessonsRepo.getForCreator(path[1], creatorId)
       if (!existingLesson) throw httpError(404, 'Lesson not found')
       const form = await request.formData()
       const file = form.get('file')
       if (!file || typeof file === 'string') return json({ error: 'No file provided' }, 400)
-      if (!file.type || !file.type.includes('pdf')) return json({ error: 'Only PDF files are allowed' }, 400)
+      if (file.size <= 0) return json({ error: 'File cannot be empty.' }, 400)
       if (file.size > 50 * 1024 * 1024) return json({ error: 'File size must be less than 50MB.' }, 400)
+
+      const originalName = file.name || 'lesson.pdf'
+      const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/)
+      const ext = extMatch ? extMatch[0].toLowerCase() : ''
+      if (ext !== '.pdf' || (file.type && !file.type.includes('pdf') && file.type !== 'application/octet-stream')) {
+        return json({ error: 'Only PDF files (.pdf) are allowed' }, 400)
+      }
+
+      const safeBaseName = originalName
+        .replace(/\.\.+/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
-      const fileId = `lesson_${path[1]}_${Date.now()}_${(file.name || 'file').replace(/[^a-zA-Z0-9._-]/g, '')}`
-      await supabaseAdmin.storage.from('product-files').upload(fileId, buffer, { contentType: file.type || 'application/pdf' })
+      const fileId = `lesson_${path[1]}_${crypto.randomUUID()}_${safeBaseName}`
+      await ensureBucket('product-files', false)
+      const { error: uploadErr } = await supabaseAdmin.storage.from('product-files').upload(fileId, buffer, { contentType: 'application/pdf', upsert: true })
+      if (uploadErr) {
+        console.error('Error uploading lesson file to storage:', uploadErr)
+        throw httpError(500, `Storage upload failed: ${uploadErr.message || 'Unknown error'}`)
+      }
       const lesson = await courseService.attachLessonPdf(creatorId, path[1], {
-        fileId, fileName: file.name || 'lesson.pdf', fileSize: buffer.length, fileMime: file.type,
+        fileId, fileName: safeBaseName, fileSize: buffer.length, fileMime: 'application/pdf',
       })
       return json({ lesson })
     }

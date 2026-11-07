@@ -147,12 +147,12 @@ export default function StorefrontFormCard({ section = {}, tokens = {}, editor =
   }
 
   return (
-    <div className="w-full max-w-md mx-auto my-2">
+    <div className="w-full my-1">
       <div
-        className="p-6 sm:p-7 transition-all duration-300 relative overflow-hidden"
+        className="p-6 sm:p-7 transition-all duration-300 relative overflow-hidden storefront-tile-chassis"
         style={{
           backgroundColor: surfaceTheme.cardBg,
-          borderRadius: '24px',
+          borderRadius: 'var(--storefront-tile-radius, 22px)',
           border: `1px solid ${surfaceTheme.cardBorder}`,
           boxShadow: surfaceTheme.cardShadow,
         }}

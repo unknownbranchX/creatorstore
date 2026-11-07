@@ -5,11 +5,13 @@ import Link from 'next/link'
 import {
   Instagram, Youtube, Twitter, Linkedin, Facebook, Globe, Music2,
   ArrowRight, Lock, Star, Sparkles, FileText, CheckCircle2, Package,
-  Link2, Layers, ExternalLink, User, Video, Calendar
+  Link2, Layers, ExternalLink, User, Video, Calendar, MoreVertical,
+  Camera, Play
 } from 'lucide-react'
 import { formatMoney } from '@/lib/clientApi'
 import { getThemeTokens } from '@/lib/themePresets'
 import { patternPreviewStyle } from '@/lib/storefront-themes'
+import { getThemeArtwork } from '@/lib/storefront-theme-artwork'
 import { ensureGoogleFonts } from '@/lib/storefrontFonts'
 import {
   getPagePillStyles,
@@ -26,8 +28,13 @@ import {
   normalizeSectionLayout,
   leadingMedia,
   buttonRadiusCss,
+  buttonShadowCss,
   buttonFaceStyle,
+  getStorefrontTileStyle,
+  storefrontTileRadiusCss,
+  storefrontCardRadiusCss,
 } from '@/lib/storefrontLayout'
+import ClassicLinkPill from '@/components/storefront/ClassicLinkPill'
 import { CreatorStoreMark, CreatorStoreLogoIcon } from '@/components/brand/CreatorStoreBrand'
 import ProductPurchaseModalFlow from '@/components/storefront/ProductPurchaseModalFlow'
 import PublicBookingModal from '@/components/storefront/PublicBookingModal'
@@ -550,6 +557,7 @@ export default function PublicStoreRenderer({
     <div
       className={`min-h-full w-full transition-all duration-300 relative overflow-hidden ${className}`}
       style={{
+        ...(tokens?.cssVariables || {}),
         backgroundColor: isImmersive ? (tokens?.contrast?.bg || colors.background) : undefined,
         color: isImmersive ? (tokens?.contrast?.text || colors.text) : colors.text,
         fontFamily: typography.bodyFont,
@@ -587,7 +595,7 @@ export default function PublicStoreRenderer({
             </div>
 
             {/* CONTENT SECTIONS BELOW IMMERSIVE HERO */}
-            <div className={`mx-auto flex flex-col gap-6 px-4 sm:px-6 pt-2 pb-12 ${layout.containerWidth} relative z-20`}>
+            <div className="w-full max-w-[480px] mx-auto flex flex-col gap-3.5 sm:gap-4 px-4 sm:px-5 pt-2 pb-12 relative z-20 box-sizing: border-box">
               {/* PAGE SWITCHER PILLS — Rendered when storefront has 2+ pages */}
               {resolvedPages.length > 1 && (
                 <PageSwitcherPills
@@ -603,7 +611,7 @@ export default function PublicStoreRenderer({
 
               <div
                 key={currentPageSlug || activePageId || 'home'}
-                className={`flex flex-col gap-6 ${
+                className={`flex flex-col gap-3.5 sm:gap-4 w-full ${
                   slideDirection === 'right'
                     ? 'storefront-slide-from-right'
                     : 'storefront-slide-from-left'
@@ -665,7 +673,7 @@ export default function PublicStoreRenderer({
             </div>
           </>
         ) : (
-          <div className={`mx-auto flex flex-col gap-6 px-4 sm:px-6 ${header?.layout === 'hero' ? 'pt-3 pb-6 sm:pt-4 sm:pb-8' : 'py-6 sm:py-8'} ${layout.containerWidth}`}>
+          <div className={`w-full max-w-[480px] mx-auto flex flex-col gap-3.5 sm:gap-4 px-4 sm:px-5 box-sizing: border-box ${header?.layout === 'hero' ? 'pt-3 pb-6 sm:pt-4 sm:pb-8' : 'py-6 sm:py-8'}`}>
             
             {/* STATIC PROFILE SECTION AT STARTING OF STOREFRONT (CREATORS CANNOT MOVE IT) */}
             <div
@@ -704,7 +712,7 @@ export default function PublicStoreRenderer({
 
             <div
               key={currentPageSlug || activePageId || 'home'}
-              className={`flex flex-col gap-6 ${
+              className={`flex flex-col gap-3.5 sm:gap-4 w-full ${
                 slideDirection === 'right'
                   ? 'storefront-slide-from-right'
                   : 'storefront-slide-from-left'
@@ -945,7 +953,7 @@ function HeroStorefrontLayout({ store, profile, products, sections, tokens, user
       </div>
 
       {/* 2. OVERLAPPING / FLOATING PRODUCTS & SECTIONS CONTAINER */}
-      <div className={`w-full ${layout.containerWidth || 'max-w-6xl'} px-4 sm:px-6 z-20 ${overlapMarginClass} transition-all duration-300`}>
+      <div className={`w-full max-w-[480px] mx-auto px-4 sm:px-5 z-20 ${overlapMarginClass} transition-all duration-300 box-sizing: border-box`}>
 
         {/* Creator Canvas: Bottom Sheet Container Wrapper */}
         {layoutPreset === 'creator-canvas' ? (
@@ -981,7 +989,7 @@ function HeroStorefrontLayout({ store, profile, products, sections, tokens, user
           </div>
         ) : (
           /* Standard Floating Cards Layout Stack */
-          <div className="space-y-6 sm:space-y-8">
+          <div className="w-full">
             <SectionsStack
               sections={contentSections}
               tokens={tokens}
@@ -1018,7 +1026,7 @@ function SectionsStack({ sections, tokens, profile, products, username, editor, 
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="flex flex-col gap-3.5 sm:gap-4 w-full">
       {sections.map((section) => (
         <div
           key={section.id}
@@ -1064,7 +1072,7 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
   const cardBg = semantic.surfaceBackground || cards.bg || '#12141C'
   const cardBorder = semantic.borderColor ? `1px solid ${semantic.borderColor}` : (cards.border || '1px solid rgba(255,255,255,0.1)')
   const cardShadow = semantic.cardShadow || cards.shadow || '0 8px 24px 0 rgba(0, 0, 0, 0.25)'
-  const cardRadius = `${cards.radius || 16}px`
+  const cardRadius = storefrontCardRadiusCss ? storefrontCardRadiusCss(tokens) : '20px'
   const primaryText = semantic.primaryText || colors.text || '#FFFFFF'
   const secondaryText = semantic.secondaryText || colors.mutedText || 'rgba(255,255,255,0.68)'
   const mutedText = semantic.mutedText || colors.mutedText || 'rgba(255,255,255,0.5)'
@@ -1078,16 +1086,16 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
       const headingText = section.props?.text ?? section.props?.title ?? 'Welcome to my store'
       const subtitleText = section.props?.subtitle
       return (
-        <div className={`flex flex-col ${alignClass} w-full`}>
+        <div className={`flex flex-col ${alignClass} w-full px-2 pt-2 pb-0.5`}>
           <h2
-            className={`text-2xl sm:text-3xl md:text-4xl ${typography.titleWeight} w-full leading-tight`}
+            className={`text-xl sm:text-2xl ${typography.titleWeight || 'font-bold'} w-full leading-tight`}
             style={{ fontFamily: typography.headingFont, color: colors.title || colors.text }}
           >
             {headingText}
           </h2>
           {subtitleText ? (
             <p
-              className="text-sm sm:text-base opacity-75 mt-1.5 w-full leading-relaxed"
+              className="text-xs sm:text-sm opacity-75 mt-1 w-full leading-relaxed"
               style={{ color: colors.text }}
             >
               {subtitleText}
@@ -1103,7 +1111,7 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
       const textContent = section.props?.text ?? section.props?.content ?? 'Explore my exclusive digital products.'
       return (
         <div
-          className={`w-full ${alignClass} text-sm sm:text-base md:text-lg leading-relaxed opacity-85 max-w-3xl mx-auto whitespace-pre-wrap break-words`}
+          className={`w-full ${alignClass} text-sm sm:text-base leading-relaxed opacity-85 px-2 py-0.5 whitespace-pre-wrap break-words`}
           style={{ color: colors.text }}
         >
           {textContent}
@@ -1119,10 +1127,16 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
       const media = leadingMedia({ thumbnail, url, title: label })
 
       if (isFeatured) {
+        const featBg = tokens?.adaptivePalette?.featuredCard?.background || cardBg
+        const featBorder = tokens?.adaptivePalette?.featuredCard?.border || cardBorder
+        const featShadow = tokens?.adaptivePalette?.featuredCard?.shadow || cardShadow
+        const featTitleColor = tokens?.adaptivePalette?.featuredCard?.text || primaryText
+        const featMutedColor = tokens?.adaptivePalette?.featuredCard?.mutedText || mutedText
+
         const card = (
           <div
-            className="overflow-hidden space-y-2.5 transition-all duration-200"
-            style={{ borderRadius: cardRadius, border: cardBorder, backgroundColor: cardBg, boxShadow: cardShadow }}
+            className="w-full overflow-hidden space-y-2.5 transition-all duration-200"
+            style={{ borderRadius: cardRadius, border: featBorder, backgroundColor: featBg, boxShadow: featShadow }}
           >
             <div className="aspect-[2.1/1] w-full overflow-hidden bg-slate-900">
               {media.type === 'image' ? (
@@ -1135,25 +1149,25 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
             </div>
             <div className="px-4 pb-4 space-y-2.5">
               <div className="space-y-0.5">
-                <h3 className="text-sm sm:text-base font-bold" style={{ color: primaryText }}>{label}</h3>
-                {url && url !== '#' && <p className="text-xs truncate" style={{ color: mutedText }}>{url}</p>}
+                <h3 className="text-sm sm:text-base font-bold" style={{ color: featTitleColor }}>{label}</h3>
+                {url && url !== '#' && <p className="text-xs truncate" style={{ color: featMutedColor }}>{url}</p>}
               </div>
-              <StyledButton label="OPEN →" tokens={tokens} fullWidth />
+              <ProductCtaButton label="OPEN" cardBg={featBg} tokens={tokens} fullWidth />
             </div>
           </div>
         )
         return (
-          <div className="w-full max-w-[420px] mx-auto">
+          <div className="w-full">
             {editor || !url || url === '#' ? card : (
-              <a href={url} target="_blank" rel="noreferrer" className="block group">{card}</a>
+              <a href={url} target="_blank" rel="noreferrer" className="block w-full group">{card}</a>
             )}
           </div>
         )
       }
 
-      const pill = <ClassicLinkPill label={label} media={media} tokens={tokens} />
+      const pill = <ClassicLinkPill label={label} media={media} tokens={tokens} align={section.props?.align} />
       return (
-        <div className={`flex flex-col ${alignClass} w-full max-w-md mx-auto`}>
+        <div className="w-full">
           {editor || !url || url === '#' ? pill : (
             <a href={url} target="_blank" rel="noreferrer" className="block w-full">{pill}</a>
           )}
@@ -1187,7 +1201,7 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
 
         const card = (
           <div
-            className="overflow-hidden space-y-2.5 transition-all duration-200"
+            className="w-full overflow-hidden space-y-2.5 transition-all duration-200"
             style={{ borderRadius: cardRadius, border: cardBorder, backgroundColor: cardBg, boxShadow: cardShadow }}
           >
             <div className="aspect-[2.1/1] w-full overflow-hidden bg-slate-900 relative flex items-center justify-center">
@@ -1219,9 +1233,9 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
           </div>
         )
         return (
-          <div className="w-full max-w-[420px] mx-auto">
+          <div className="w-full">
             {editor || !postUrl || postUrl === '#' ? card : (
-              <a href={postUrl} target="_blank" rel="noopener noreferrer" className="block group">{card}</a>
+              <a href={postUrl} target="_blank" rel="noopener noreferrer" className="block w-full group">{card}</a>
             )}
           </div>
         )
@@ -1230,7 +1244,7 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
       if (style === 'grid') {
         const gridCard = (
           <div
-            className="overflow-hidden p-3.5 space-y-3 transition-all duration-200"
+            className="w-full overflow-hidden p-3.5 space-y-3 transition-all duration-200"
             style={{ borderRadius: cardRadius, border: cardBorder, backgroundColor: cardBg, boxShadow: cardShadow }}
           >
             <div className="flex items-center justify-between px-1">
@@ -1296,9 +1310,9 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
           </div>
         )
         return (
-          <div className="w-full max-w-[420px] mx-auto">
+          <div className="w-full">
             {editor || !targetUrl || targetUrl === '#' ? gridCard : (
-              <a href={targetUrl} target="_blank" rel="noopener noreferrer" className="block group">{gridCard}</a>
+              <a href={targetUrl} target="_blank" rel="noopener noreferrer" className="block w-full group">{gridCard}</a>
             )}
           </div>
         )
@@ -1307,7 +1321,7 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
       if (style === 'carousel') {
         const carouselCard = (
           <div
-            className="overflow-hidden p-3.5 space-y-3 transition-all duration-200"
+            className="w-full overflow-hidden p-3.5 space-y-3 transition-all duration-200"
             style={{ borderRadius: cardRadius, border: cardBorder, backgroundColor: cardBg, boxShadow: cardShadow }}
           >
             <div className="flex items-center justify-between px-1">
@@ -1365,9 +1379,9 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
           </div>
         )
         return (
-          <div className="w-full max-w-[420px] mx-auto">
+          <div className="w-full">
             {editor || !targetUrl || targetUrl === '#' ? carouselCard : (
-              <a href={targetUrl} target="_blank" rel="noopener noreferrer" className="block group">{carouselCard}</a>
+              <a href={targetUrl} target="_blank" rel="noopener noreferrer" className="block w-full group">{carouselCard}</a>
             )}
           </div>
         )
@@ -1379,7 +1393,7 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
 
         const profileCard = (
           <div
-            className="overflow-hidden p-4 space-y-3.5 text-center transition-all duration-200"
+            className="w-full overflow-hidden p-4 space-y-3.5 text-center transition-all duration-200"
             style={{ borderRadius: cardRadius, border: cardBorder, backgroundColor: cardBg, boxShadow: cardShadow }}
           >
             <div className="relative inline-block mx-auto">
@@ -1443,9 +1457,9 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
           </div>
         )
         return (
-          <div className="w-full max-w-[420px] mx-auto">
+          <div className="w-full">
             {editor || !targetUrl || targetUrl === '#' ? profileCard : (
-              <a href={targetUrl} target="_blank" rel="noopener noreferrer" className="block group">{profileCard}</a>
+              <a href={targetUrl} target="_blank" rel="noopener noreferrer" className="block w-full group">{profileCard}</a>
             )}
           </div>
         )
@@ -1459,7 +1473,7 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
 
         const singleCard = (
           <div
-            className="overflow-hidden space-y-2.5 transition-all duration-200"
+            className="w-full overflow-hidden space-y-2.5 transition-all duration-200"
             style={{ borderRadius: cardRadius, border: cardBorder, backgroundColor: cardBg, boxShadow: cardShadow }}
           >
             <div className="aspect-square w-full overflow-hidden relative flex items-center justify-center" style={{ backgroundColor: semantic.surfaceElevated || '#0F172A' }}>
@@ -1491,9 +1505,9 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
           </div>
         )
         return (
-          <div className="w-full max-w-[420px] mx-auto">
+          <div className="w-full">
             {editor || !postUrl || postUrl === '#' ? singleCard : (
-              <a href={postUrl} target="_blank" rel="noopener noreferrer" className="block group">{singleCard}</a>
+              <a href={postUrl} target="_blank" rel="noopener noreferrer" className="block w-full group">{singleCard}</a>
             )}
           </div>
         )
@@ -1504,9 +1518,9 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
         ? { type: 'image', src: thumbnail }
         : { type: 'icon', Icon: PlatformIcon, color: platform.color }
 
-      const pill = <ClassicLinkPill label={label} media={media} tokens={tokens} />
+      const pill = <ClassicLinkPill label={label} media={media} tokens={tokens} align={section.props?.align} />
       return (
-        <div className={`flex flex-col ${alignClass} w-full max-w-md mx-auto`}>
+        <div className="w-full">
           {editor || !url || url === '#' ? pill : (
             <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full">{pill}</a>
           )}
@@ -1520,12 +1534,12 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
           src={section.props.url}
           alt={section.props?.alt || ''}
           className="w-full max-h-[450px] sm:max-h-[550px] md:max-h-[650px] object-cover shadow-sm"
-          style={{ borderRadius: `${cards.radius}px` }}
+          style={{ borderRadius: cardRadius }}
         />
       ) : (
         <div
           className="flex aspect-video w-full items-center justify-center rounded-2xl border border-dashed text-sm font-medium"
-          style={{ borderRadius: `${cards.radius}px`, border: cardBorder, backgroundColor: cardBg, color: mutedText }}
+          style={{ borderRadius: cardRadius, border: cardBorder, backgroundColor: cardBg, color: mutedText }}
         >
           Add image URL
         </div>
@@ -1555,12 +1569,13 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
           <ClassicLinkPill
             label={p.title}
             meta={meta}
+            metaIcon={isBundle ? Layers : undefined}
             media={media}
             tokens={tokens}
           />
         )
         return (
-          <div className="w-full max-w-md mx-auto">
+          <div className="w-full">
             <div
               role="button"
               tabIndex={0}
@@ -1575,7 +1590,7 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
                   onProductClick?.(p)
                 }
               }}
-              className="block cursor-pointer text-left"
+              className="block cursor-pointer text-left w-full"
             >
               {pill}
             </div>
@@ -1584,7 +1599,7 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
       }
 
       return (
-        <div className="w-full max-w-[420px] mx-auto">
+        <div className="w-full">
           <ProductCard product={p} tokens={tokens} username={username} editor={editor} ctaOverride={section.props?.ctaLabel} onProductClick={onProductClick} />
         </div>
       )
@@ -1704,7 +1719,7 @@ function SectionRenderer({ section, tokens, profile, products, username, editor,
         if (editor) {
           return (
             <div
-              className="w-full max-w-md mx-auto p-4 rounded-xl border border-dashed text-center text-xs font-medium"
+              className="w-full p-4 rounded-xl border border-dashed text-center text-xs font-medium"
               style={{ backgroundColor: cardBg, borderColor: cardBorder, color: secondaryText }}
             >
               <p className="font-bold mb-1" style={{ color: primaryText }}>{title}</p>
@@ -1863,7 +1878,11 @@ function ProfileHeader({ profile, tokens, editor, username, store }) {
   // 4. @handle fallback (never email)
   const name = validHeaderTitle || store?.storeName || profile?.name || (handle ? `@${handle}` : 'Creator Store')
   const bio = header?.bio !== undefined && header?.bio !== null ? header.bio : (profile?.bio || store?.bio || '')
-  const avatarUrl = header?.avatarUrl || store?.avatarUrl || profile?.avatarUrl || ''
+  const themeId = String(tokens?.galleryThemeId || store?.theme?.galleryThemeId || '').toLowerCase().trim()
+  const themeArtwork = getThemeArtwork(themeId)
+  const hasCustomAvatar = Boolean(header?.avatarUrl || store?.avatarUrl || profile?.avatarUrl)
+  const customAvatarUrl = header?.avatarUrl || store?.avatarUrl || profile?.avatarUrl || ''
+  const avatarUrl = hasCustomAvatar ? customAvatarUrl : (store?.theme?.headerImageUrl || themeArtwork?.svgDataUri || '')
   const titleStyle = header?.titleStyle === 'logo' && header?.logoUrl ? 'logo' : 'text'
   const isHero = header?.layout === 'hero'
   const showAvatar = header?.showAvatar !== false
@@ -1980,18 +1999,32 @@ function ProfileHeader({ profile, tokens, editor, username, store }) {
   return (
     <div className="flex flex-col items-center text-center gap-3 pt-2">
       {showAvatar && (
-        <div className="relative overflow-hidden h-20 w-20 sm:h-24 sm:w-24 shadow-xs ring-2 ring-black/5 dark:ring-white/10 bg-slate-100 dark:bg-zinc-800/80 flex items-center justify-center shrink-0 rounded-full">
-          {avatarUrl ? (
+        !hasCustomAvatar && themeId === 'vox' ? (
+          <div className="relative overflow-hidden w-48 h-20 shadow-md ring-2 ring-red-900/30 flex items-center justify-center shrink-0 rounded-xl">
             <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-2xl sm:text-3xl font-extrabold uppercase select-none opacity-70" style={{ color: colors.text }}>
-              {String(name).replace(/^@/, '').slice(0, 1)}
-            </span>
-          )}
-        </div>
+          </div>
+        ) : !hasCustomAvatar && (themeId === 'sweat' || themeId === 'encore') ? (
+          <div className="relative overflow-hidden w-full max-w-[340px] h-36 sm:h-44 shadow-md ring-1 ring-white/10 flex items-center justify-center shrink-0 rounded-2xl">
+            <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
+          </div>
+        ) : !hasCustomAvatar && themeId === 'nourish' ? (
+          <div className="relative overflow-hidden h-24 w-24 sm:h-28 sm:w-28 shadow-sm ring-2 ring-white/20 bg-[#465328] flex items-center justify-center shrink-0 rounded-full">
+            <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
+          </div>
+        ) : (
+          <div className="relative overflow-hidden h-20 w-20 sm:h-24 sm:w-24 shadow-xs ring-2 ring-black/5 dark:ring-white/10 bg-slate-100 dark:bg-zinc-800/80 flex items-center justify-center shrink-0 rounded-full">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-2xl sm:text-3xl font-extrabold uppercase select-none opacity-70" style={{ color: colors.text }}>
+                {String(name).replace(/^@/, '').slice(0, 1)}
+              </span>
+            )}
+          </div>
+        )
       )}
       {(titleNode || bioNode) && (
-        <div className="space-y-1 max-w-md mx-auto">
+        <div className="space-y-1 w-full mx-auto">
           {titleNode}
           {bioNode}
         </div>
@@ -2011,7 +2044,7 @@ function ProductCard({ product, tokens, username, editor, ctaOverride, onProduct
   const Wrapper = ({ children }) =>
     editor ? (
       <div
-        className="relative group h-full min-w-0 cursor-pointer"
+        className="w-full relative group h-full min-w-0 cursor-pointer"
         onClick={() => onProductClick?.(product)}
       >
         {isDraft && (
@@ -2036,7 +2069,7 @@ function ProductCard({ product, tokens, username, editor, ctaOverride, onProduct
             onProductClick?.(product)
           }
         }}
-        className="block group h-full min-w-0 cursor-pointer text-left"
+        className="w-full block group h-full min-w-0 cursor-pointer text-left"
       >
         {children}
       </div>
@@ -2058,48 +2091,68 @@ function ProductCard({ product, tokens, username, editor, ctaOverride, onProduct
 
   const priceDisplay = Number(product.price) === 0 ? 'Free' : formatMoney(product.price, product.currency)
   const origPriceDisplay = product.originalPrice ? formatMoney(product.originalPrice, product.currency) : null
+  const cardRadius = storefrontCardRadiusCss ? storefrontCardRadiusCss(tokens) : '20px'
+  const resolvedThumbnail = product.thumbnail || (isBundle ? (product.bundleProducts?.find(bp => bp?.thumbnail)?.thumbnail || product.bundleItems?.find(bi => bi?.product?.thumbnail)?.product?.thumbnail) : null)
 
   // 1. MINIMAL CARD (Minimal Theme)
   if (layout.productCardStyle === 'flat-minimal' || tokens.presetId === 'minimal') {
-    const cardBg = tokens?.semantic?.surfaceBackground || cards.bg || '#FFFFFF'
-    const cardTitleColor = tokens?.semantic?.primaryText || getAccessibleTextColor(cardBg, null, 4.5)
-    const cardMutedColor = tokens?.semantic?.mutedText || getAccessibleMutedTextColor(cardBg)
+    const cardBg = tokens?.adaptivePalette?.productCard?.background || tokens?.semantic?.surfaceBackground || cards.bg || '#FFFFFF'
+    const cardTitleColor = tokens?.adaptivePalette?.productCard?.text || tokens?.semantic?.primaryText || getAccessibleTextColor(cardBg, null, 4.5)
+    const cardMutedColor = tokens?.adaptivePalette?.productCard?.mutedText || tokens?.semantic?.mutedText || getAccessibleMutedTextColor(cardBg)
 
     return (
       <Wrapper>
         <div
           className="p-3.5 sm:p-4 transition-all duration-200 border border-slate-200/80 bg-white hover:border-slate-300 rounded-2xl flex flex-col justify-between h-full gap-3 overflow-hidden shadow-xs hover:scale-[1.01] active:scale-[0.99]"
           style={{
-            borderRadius: `${cards.radius || 18}px`,
+            borderRadius: cardRadius,
             border: cards.border || '1px solid rgba(0,0,0,0.08)',
             background: cardBg,
           }}
         >
           <ProductThumbnail
-            thumbnail={product.thumbnail}
+            thumbnail={resolvedThumbnail}
             title={product.title}
             type={product.type}
             price={product.price}
             theme="minimal"
-            aspect="aspect-[2.1/1]"
+            aspect="aspect-[16/10]"
           />
-          <div className="space-y-1 flex-1 min-w-0">
-            {isBundle && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-800">
-                Bundle{bundleCount > 0 ? ` · ${bundleCount} items` : ''}
-              </span>
-            )}
-            <h3 className="text-sm sm:text-base font-bold leading-snug break-words line-clamp-2" style={{ color: cardTitleColor }}>{product.title}</h3>
-            {product.shortDescription && (
-              <p className="text-xs line-clamp-2 leading-relaxed break-words opacity-75" style={{ color: cardMutedColor }}>{product.shortDescription}</p>
+          <div className="space-y-2 flex-1 min-w-0">
+            {isBundle ? (
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex items-center justify-between gap-2 pt-0.5">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800">
+                    <Layers className="h-3 w-3 shrink-0" />
+                    Bundle{bundleCount > 0 ? ` · ${bundleCount} ${bundleCount === 1 ? 'item' : 'items'}` : ''}
+                  </span>
+                  <div className="flex items-baseline gap-1.5 shrink-0">
+                    <span className="text-sm sm:text-base font-extrabold" style={{ color: cardTitleColor }}>{priceDisplay}</span>
+                    {origPriceDisplay && <span className="text-xs font-semibold line-through opacity-60" style={{ color: cardMutedColor }}>{origPriceDisplay}</span>}
+                  </div>
+                </div>
+                <h3 className="text-sm sm:text-base font-bold leading-snug break-words line-clamp-2" style={{ color: cardTitleColor }}>{product.title}</h3>
+                {product.shortDescription && (
+                  <p className="text-xs line-clamp-2 leading-relaxed break-words opacity-75" style={{ color: cardMutedColor }}>{product.shortDescription}</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1 min-w-0">
+                <h3 className="text-sm sm:text-base font-bold leading-snug break-words line-clamp-2" style={{ color: cardTitleColor }}>{product.title}</h3>
+                {product.shortDescription && (
+                  <p className="text-xs line-clamp-2 leading-relaxed break-words opacity-75" style={{ color: cardMutedColor }}>{product.shortDescription}</p>
+                )}
+              </div>
             )}
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-100 mt-auto min-w-0">
-            <div className="flex items-baseline gap-1.5 shrink-0">
-              <span className="text-sm sm:text-base font-extrabold" style={{ color: cardTitleColor }}>{priceDisplay}</span>
-              {origPriceDisplay && <span className="text-xs font-semibold line-through opacity-60" style={{ color: cardMutedColor }}>{origPriceDisplay}</span>}
-            </div>
-            <ProductCtaButton label={defaultCta} cardBg={cardBg} tokens={tokens} fullWidth={false} />
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 mt-auto min-w-0">
+            {!isBundle && (
+              <div className="flex items-baseline gap-1.5 shrink-0">
+                <span className="text-sm sm:text-base font-extrabold" style={{ color: cardTitleColor }}>{priceDisplay}</span>
+                {origPriceDisplay && <span className="text-xs font-semibold line-through opacity-60" style={{ color: cardMutedColor }}>{origPriceDisplay}</span>}
+              </div>
+            )}
+            <ProductCtaButton label={defaultCta} cardBg={cardBg} tokens={tokens} fullWidth={isBundle} />
           </div>
         </div>
       </Wrapper>
@@ -2113,40 +2166,60 @@ function ProductCard({ product, tokens, username, editor, ctaOverride, onProduct
         <div
           className="p-3.5 sm:p-4 flex flex-col justify-between h-full gap-3 transition-all duration-200 border border-slate-800/80 bg-[#111827] rounded-2xl hover:border-[#D4AF37]/50 shadow-sm overflow-hidden hover:scale-[1.01] active:scale-[0.99]"
           style={{
-            borderRadius: `${cards.radius || 18}px`,
+            borderRadius: cardRadius,
             boxShadow: cards.shadow || '0 2px 8px rgba(0,0,0,0.12)',
           }}
         >
           <ProductThumbnail
-            thumbnail={product.thumbnail}
+            thumbnail={resolvedThumbnail}
             title={product.title}
             type={product.type}
             price={product.price}
             hasDiscount={hasDiscount}
             discountPct={discountPct}
             theme="luxury"
-            aspect="aspect-[2.1/1]"
+            aspect="aspect-[16/10]"
           />
-          <div className="space-y-1 flex-1 min-w-0">
-            {isBundle && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#D4AF37]/15 text-[#D4AF37]">
-                Bundle{bundleCount > 0 ? ` · ${bundleCount} items` : ''}
-              </span>
-            )}
-            <h3 className="text-sm sm:text-base font-bold text-[#F3F4F6] leading-snug break-words line-clamp-2" style={{ fontFamily: typography.headingFont }}>
-              {product.title}
-            </h3>
-            {product.shortDescription && (
-              <p className="text-xs text-[rgba(244,242,236,0.65)] line-clamp-2 leading-relaxed break-words">{product.shortDescription}</p>
+          <div className="space-y-2 flex-1 min-w-0">
+            {isBundle ? (
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex items-center justify-between gap-2 pt-0.5">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#D4AF37]/15 text-[#D4AF37]">
+                    <Layers className="h-3 w-3 shrink-0" />
+                    Bundle{bundleCount > 0 ? ` · ${bundleCount} ${bundleCount === 1 ? 'item' : 'items'}` : ''}
+                  </span>
+                  <div className="flex items-baseline gap-1.5 shrink-0">
+                    <span className="text-base sm:text-lg font-bold text-[#D4AF37]">{priceDisplay}</span>
+                    {origPriceDisplay && <span className="text-xs text-[rgba(244,242,236,0.6)] line-through">{origPriceDisplay}</span>}
+                  </div>
+                </div>
+                <h3 className="text-sm sm:text-base font-bold text-[#F3F4F6] leading-snug break-words line-clamp-2" style={{ fontFamily: typography.headingFont }}>
+                  {product.title}
+                </h3>
+                {product.shortDescription && (
+                  <p className="text-xs text-[rgba(244,242,236,0.65)] line-clamp-2 leading-relaxed break-words">{product.shortDescription}</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1 min-w-0">
+                <h3 className="text-sm sm:text-base font-bold text-[#F3F4F6] leading-snug break-words line-clamp-2" style={{ fontFamily: typography.headingFont }}>
+                  {product.title}
+                </h3>
+                {product.shortDescription && (
+                  <p className="text-xs text-[rgba(244,242,236,0.65)] line-clamp-2 leading-relaxed break-words">{product.shortDescription}</p>
+                )}
+              </div>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-800/80 mt-auto min-w-0">
-            <div className="flex items-baseline gap-1.5 shrink-0">
-              <span className="text-base sm:text-lg font-bold text-[#D4AF37]">{priceDisplay}</span>
-              {origPriceDisplay && <span className="text-xs text-[rgba(244,242,236,0.6)] line-through">{origPriceDisplay}</span>}
-            </div>
-            <ProductCtaButton label={defaultCta} cardBg="#111827" tokens={tokens} fullWidth={false} />
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 mt-auto min-w-0">
+            {!isBundle && (
+              <div className="flex items-baseline gap-1.5 shrink-0">
+                <span className="text-base sm:text-lg font-bold text-[#D4AF37]">{priceDisplay}</span>
+                {origPriceDisplay && <span className="text-xs text-[rgba(244,242,236,0.6)] line-through">{origPriceDisplay}</span>}
+              </div>
+            )}
+            <ProductCtaButton label={defaultCta} cardBg="#111827" tokens={tokens} fullWidth={isBundle} />
           </div>
         </div>
       </Wrapper>
@@ -2160,42 +2233,66 @@ function ProductCard({ product, tokens, username, editor, ctaOverride, onProduct
         <div
           className="p-3.5 sm:p-4 flex flex-col justify-between h-full gap-3 transition-all duration-200 border border-[#27272A] bg-[#18181B] rounded-2xl hover:border-slate-600 shadow-sm overflow-hidden hover:scale-[1.01] active:scale-[0.99]"
           style={{
-            borderRadius: `${cards.radius || 18}px`,
+            borderRadius: cardRadius,
             boxShadow: cards.shadow || '0 2px 8px rgba(0,0,0,0.15)',
           }}
         >
-          <div className="flex items-start gap-3.5">
-            <ProductThumbnail
-              thumbnail={product.thumbnail}
-              title={product.title}
-              type={product.type}
-              aspect="w-14 h-14"
-              theme="dark"
-            />
-            <div className="min-w-0 flex-1 space-y-1">
-              {isBundle && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-white">
-                  Bundle{bundleCount > 0 ? ` · ${bundleCount} items` : ''}
-                </span>
-              )}
-              <h3 className="text-sm sm:text-base font-bold text-white leading-snug break-words line-clamp-2">{product.title}</h3>
-              {product.shortDescription && (
-                <p className="text-xs text-[rgba(244,242,236,0.6)] line-clamp-2 leading-relaxed break-words">{product.shortDescription}</p>
-              )}
+          {isBundle ? (
+            <div className="space-y-3">
+              <ProductThumbnail
+                thumbnail={resolvedThumbnail}
+                title={product.title}
+                type={product.type}
+                aspect="aspect-[16/10]"
+                theme="dark"
+              />
+              <div className="space-y-2 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/10 text-white">
+                    <Layers className="h-3 w-3 shrink-0" />
+                    Bundle{bundleCount > 0 ? ` · ${bundleCount} items` : ''}
+                  </span>
+                  <div className="flex items-baseline gap-1.5 shrink-0">
+                    <span className="text-base sm:text-lg font-black text-white">{priceDisplay}</span>
+                    {origPriceDisplay && <span className="text-xs font-bold text-[rgba(244,242,236,0.6)] line-through">{origPriceDisplay}</span>}
+                  </div>
+                </div>
+                <h3 className="text-sm sm:text-base font-bold text-white leading-snug break-words line-clamp-2">{product.title}</h3>
+                {product.shortDescription && (
+                  <p className="text-xs text-[rgba(244,242,236,0.6)] line-clamp-2 leading-relaxed break-words">{product.shortDescription}</p>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex items-start gap-3.5">
+                <ProductThumbnail
+                  thumbnail={resolvedThumbnail}
+                  title={product.title}
+                  type={product.type}
+                  aspect="w-14 h-14"
+                  theme="dark"
+                />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <h3 className="text-sm sm:text-base font-bold text-white leading-snug break-words line-clamp-2">{product.title}</h3>
+                  {product.shortDescription && (
+                    <p className="text-xs text-[rgba(244,242,236,0.6)] line-clamp-2 leading-relaxed break-words">{product.shortDescription}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-0.5">
+                <div className="flex items-baseline gap-1.5 shrink-0">
+                  <span className="text-base sm:text-lg font-black text-white">{priceDisplay}</span>
+                  {origPriceDisplay && <span className="text-xs font-bold text-[rgba(244,242,236,0.6)] line-through">{origPriceDisplay}</span>}
+                </div>
+                <div className="flex items-center gap-1 bg-slate-900 border border-slate-700/80 px-2 py-0.5 rounded-md text-xs font-bold text-slate-200 shrink-0">
+                  <Star className="h-3 w-3 fill-white text-white" /> 5.0
+                </div>
+              </div>
+            </>
+          )}
 
-          <div className="flex items-center justify-between pt-0.5">
-            <div className="flex items-baseline gap-1.5 shrink-0">
-              <span className="text-base sm:text-lg font-black text-white">{priceDisplay}</span>
-              {origPriceDisplay && <span className="text-xs font-bold text-[rgba(244,242,236,0.6)] line-through">{origPriceDisplay}</span>}
-            </div>
-            <div className="flex items-center gap-1 bg-slate-900 border border-slate-700/80 px-2 py-0.5 rounded-md text-xs font-bold text-slate-200 shrink-0">
-              <Star className="h-3 w-3 fill-white text-white" /> 5.0
-            </div>
-          </div>
-
-          <div className="mt-auto pt-0.5">
+          <div className="mt-auto pt-1">
             <ProductCtaButton label={defaultCta} cardBg="#18181B" tokens={tokens} fullWidth />
           </div>
         </div>
@@ -2210,12 +2307,12 @@ function ProductCard({ product, tokens, username, editor, ctaOverride, onProduct
         <div
           className="p-3.5 sm:p-4 flex flex-col justify-between h-full gap-3 transition-all duration-200 border border-[#E7E5E4] bg-white hover:border-stone-400 rounded-2xl shadow-xs overflow-hidden hover:scale-[1.01] active:scale-[0.99]"
           style={{
-            borderRadius: `${cards.radius || 18}px`,
+            borderRadius: cardRadius,
           }}
         >
           <div className="flex flex-col sm:flex-row gap-3.5 items-start flex-1 min-w-0">
             <ProductThumbnail
-              thumbnail={product.thumbnail}
+              thumbnail={resolvedThumbnail}
               title={product.title}
               type={product.type}
               aspect="w-full sm:w-2/5 aspect-[16/10] sm:aspect-[4/4.5]"
@@ -2224,7 +2321,8 @@ function ProductCard({ product, tokens, username, editor, ctaOverride, onProduct
             <div className="flex-1 space-y-1.5 min-w-0 flex flex-col justify-between h-full">
               <div>
                 {isBundle && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-stone-100 text-stone-800 mb-1">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-800 mb-1">
+                    <Layers className="h-3 w-3 shrink-0" />
                     Bundle{bundleCount > 0 ? ` · ${bundleCount} items` : ''}
                   </span>
                 )}
@@ -2255,46 +2353,58 @@ function ProductCard({ product, tokens, username, editor, ctaOverride, onProduct
   const semantic = tokens?.semantic || {}
   const cardBg = (header?.layout === 'immersive' && tokens?.contrast?.surface)
     ? tokens.contrast.surface
-    : (semantic.surfaceBackground || cards.bg || (isLight ? '#FFFFFF' : '#12141A'))
+    : (tokens?.adaptivePalette?.productCard?.background || semantic.surfaceBackground || cards.bg || (isLight ? '#FFFFFF' : '#12141A'))
   const cardTitleColor = (header?.layout === 'immersive' && tokens?.contrast?.text)
     ? tokens.contrast.text
-    : (semantic.primaryText || getAccessibleTextColor(cardBg, null, 4.5))
+    : (tokens?.adaptivePalette?.productCard?.text || semantic.primaryText || getAccessibleTextColor(cardBg, null, 4.5))
   const cardMutedColor = (header?.layout === 'immersive' && tokens?.contrast?.textSecondary)
     ? tokens.contrast.textSecondary
-    : (semantic.mutedText || getAccessibleMutedTextColor(cardBg))
+    : (tokens?.adaptivePalette?.productCard?.mutedText || semantic.mutedText || getAccessibleMutedTextColor(cardBg))
   const cardBorder = (header?.layout === 'immersive' && tokens?.contrast?.border)
     ? `1px solid ${tokens.contrast.border}`
-    : (semantic.borderColor ? `1px solid ${semantic.borderColor}` : (cards.border || (isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)')))
+    : (tokens?.adaptivePalette?.productCard?.border || (semantic.borderColor ? `1px solid ${semantic.borderColor}` : (cards.border || (isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)'))))
 
   return (
     <Wrapper>
       <div
         className="overflow-hidden flex flex-col justify-between h-full transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] rounded-2xl shadow-xs border text-left p-3.5 sm:p-4 gap-3"
         style={{
-          borderRadius: `${cards.radius || 18}px`,
+          borderRadius: cardRadius,
           background: cardBg,
           border: cardBorder,
-          boxShadow: cards.shadow || '0 2px 8px rgba(0,0,0,0.04)',
+          boxShadow: cards.shadow || semantic.cardShadow || '0 2px 8px rgba(0,0,0,0.04)',
         }}
       >
         <ProductThumbnail
-          thumbnail={product.thumbnail}
+          thumbnail={resolvedThumbnail}
           title={product.title}
           type={product.type}
-          aspect="aspect-[2.1/1]"
+          aspect="aspect-[16/10]"
           price={product.price}
           hasDiscount={hasDiscount}
           discountPct={discountPct}
           theme={isLight ? 'minimal' : 'creator'}
         />
         <div className="space-y-2 flex flex-col justify-between flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2.5">
-            <div className="min-w-0 flex-1 space-y-0.5">
-              {isBundle && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary mb-0.5">
-                  Bundle{bundleCount > 0 ? ` · ${bundleCount} items` : ''}
+          {isBundle ? (
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex items-center justify-between gap-2 pt-0.5">
+                <span
+                  className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: tokens?.adaptivePalette?.productCard?.badgeBg || (isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.12)'),
+                    color: tokens?.adaptivePalette?.productCard?.badgeText || (isLight ? '#0F172A' : '#F8FAFC'),
+                    border: isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.16)',
+                  }}
+                >
+                  <Layers className="h-3 w-3 shrink-0" />
+                  Bundle{bundleCount > 0 ? ` · ${bundleCount} ${bundleCount === 1 ? 'product' : 'products'}` : ''}
                 </span>
-              )}
+                <div className="shrink-0 text-right font-extrabold text-base sm:text-lg tracking-tight" style={{ color: tokens?.adaptivePalette?.productCard?.priceText || cardTitleColor }}>
+                  <div>{priceDisplay}</div>
+                  {origPriceDisplay && <div className="text-[11px] font-semibold line-through opacity-60" style={{ color: cardMutedColor }}>{origPriceDisplay}</div>}
+                </div>
+              </div>
               <h3 className="text-sm sm:text-base font-bold tracking-tight leading-snug line-clamp-2 break-words" style={{ color: cardTitleColor }}>
                 {product.title}
               </h3>
@@ -2304,11 +2414,24 @@ function ProductCard({ product, tokens, username, editor, ctaOverride, onProduct
                 </p>
               )}
             </div>
-            <div className="shrink-0 text-right font-bold text-sm sm:text-base" style={{ color: cardTitleColor }}>
-              <div>{priceDisplay}</div>
-              {origPriceDisplay && <div className="text-[11px] font-semibold line-through opacity-60" style={{ color: cardMutedColor }}>{origPriceDisplay}</div>}
+          ) : (
+            <div className="flex items-start justify-between gap-2.5">
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <h3 className="text-sm sm:text-base font-bold tracking-tight leading-snug line-clamp-2 break-words" style={{ color: cardTitleColor }}>
+                  {product.title}
+                </h3>
+                {product.shortDescription && (
+                  <p className="text-xs line-clamp-2 leading-relaxed break-words opacity-75" style={{ color: cardMutedColor }}>
+                    {product.shortDescription}
+                  </p>
+                )}
+              </div>
+              <div className="shrink-0 text-right font-bold text-sm sm:text-base" style={{ color: cardTitleColor }}>
+                <div>{priceDisplay}</div>
+                {origPriceDisplay && <div className="text-[11px] font-semibold line-through opacity-60" style={{ color: cardMutedColor }}>{origPriceDisplay}</div>}
+              </div>
             </div>
-          </div>
+          )}
           <div className="mt-auto pt-1">
             <ProductCtaButton label={defaultCta} cardBg={cardBg} tokens={tokens} fullWidth />
           </div>
@@ -2318,48 +2441,7 @@ function ProductCard({ product, tokens, username, editor, ctaOverride, onProduct
   )
 }
 
-function ClassicLinkPill({ label, meta, media, tokens }) {
-  const { buttons, header, contrast } = tokens
-  const isImmersive = header?.layout === 'immersive' && contrast
-  const face = buttonFaceStyle(tokens)
-  const innerRadius = buttons?.radius >= 90 || buttons?.shape === 'pill' ? '9999px' : 'var(--radius-chip)'
-
-  const pillStyle = isImmersive
-    ? {
-        backgroundColor: contrast.surface,
-        color: contrast.text,
-        border: `1px solid ${contrast.border}`,
-        borderRadius: buttons?.radius >= 90 || buttons?.shape === 'pill' ? '9999px' : '16px',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
-      }
-    : face
-
-  return (
-    <div
-      className="w-full inline-flex items-center gap-3 px-3.5 py-3 min-h-[52px] transition-all hover:scale-[1.01] hover:opacity-95"
-      style={pillStyle}
-    >
-      <div
-        className="h-10 w-10 shrink-0 overflow-hidden flex items-center justify-center bg-black/10"
-        style={{ borderRadius: innerRadius }}
-      >
-        {media?.type === 'image' ? (
-          <img src={media.src} alt="" className="h-full w-full object-cover" />
-        ) : media?.type === 'icon' && media.Icon ? (
-          <div className="h-full w-full flex items-center justify-center" style={{ backgroundColor: `${media.color || '#3B82F6'}20`, color: media.color || '#3B82F6' }}>
-            <media.Icon className="h-5 w-5" />
-          </div>
-        ) : (
-          <span className="text-xs font-black">{media?.letter || '?'}</span>
-        )}
-      </div>
-      <div className="min-w-0 flex-1 text-left">
-        <div className="text-sm font-bold truncate" style={{ color: isImmersive ? contrast.text : undefined }}>{label}</div>
-        {meta && <div className="text-[10px] font-bold opacity-75 truncate" style={{ color: isImmersive ? contrast.textSecondary : undefined }}>{meta}</div>}
-      </div>
-    </div>
-  )
-}
+export { ClassicLinkPill }
 
 function stripTrailingArrow(str) {
   if (!str) return ''
@@ -2371,28 +2453,33 @@ export function ProductCtaButton({ label = 'Get the Guide', cardBg, tokens, full
   const ctaStyles = getProductCtaStyles(cardBg, tokens)
   // Clean label to ensure only a single arrow icon is rendered
   const cleanLabel = stripTrailingArrow(label) || 'Get the Guide'
+  const btnRadius = buttonRadiusCss ? buttonRadiusCss(tokens?.buttons) : '8px'
+  const btnShadow = tokens?.buttons?.shadow === 'none'
+    ? 'none'
+    : (tokens?.buttons ? buttonShadowCss(tokens.buttons.shadow, tokens.buttons.shadowColor) : ctaStyles.shadow)
 
   return (
     <div
-      className={`group/cta flex items-center justify-center gap-2 w-full h-[40px] sm:h-[42px] rounded-lg font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer select-none shrink-0 ${
+      className={`group/cta flex items-center justify-center gap-2 w-full h-[40px] sm:h-[42px] font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer select-none shrink-0 ${
         fullWidth ? 'w-full' : ''
       }`}
       style={{
+        borderRadius: btnRadius,
         background: ctaStyles.background,
         color: ctaStyles.color,
         border: ctaStyles.border,
-        boxShadow: ctaStyles.shadow,
+        boxShadow: btnShadow,
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = ctaStyles.hoverBackground
         e.currentTarget.style.border = ctaStyles.hoverBorder
-        e.currentTarget.style.boxShadow = ctaStyles.hoverShadow
+        e.currentTarget.style.boxShadow = ctaStyles.hoverShadow || btnShadow
         e.currentTarget.style.transform = 'translateY(-1px)'
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = ctaStyles.background
         e.currentTarget.style.border = ctaStyles.border
-        e.currentTarget.style.boxShadow = ctaStyles.shadow
+        e.currentTarget.style.boxShadow = btnShadow
         e.currentTarget.style.transform = 'translateY(0)'
       }}
     >

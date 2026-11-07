@@ -6,12 +6,18 @@ import ColorField from './ColorField'
 import ProBadge from './ProBadge'
 import AltTitleFontToggle from './AltTitleFontToggle'
 import TitleBioFields from './TitleBioFields'
+import PanelHeader from './PanelHeader'
 
 export default function HeaderPanel({
   theme,
   storeSlug,
   avatarUrl,
   onChange,
+  onBack,
+  onSave,
+  onCancel,
+  hasUnsavedChanges = false,
+  isSaving = false,
   onUpgrade,
   onAvatarUpload,
   onLogoUpload,
@@ -27,7 +33,16 @@ export default function HeaderPanel({
   const titleStyle = theme.titleStyle === 'logo' ? 'logo' : 'text'
 
   return (
-    <div className="space-y-5 bg-surface-card border border-edge rounded-card p-4">
+    <div className="bg-white border border-[#E5E5E3] rounded-[24px] p-5 sm:p-6 shadow-xs space-y-6">
+      <PanelHeader
+        title="Header Customization"
+        onBack={onBack}
+        onSave={onSave}
+        onCancel={onCancel}
+        hasUnsavedChanges={hasUnsavedChanges}
+        isSaving={isSaving}
+      />
+
       <div className="space-y-2">
         <span className="text-label text-content-primary font-medium">Choose Header</span>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

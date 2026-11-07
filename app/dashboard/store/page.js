@@ -16,6 +16,7 @@ import { TextInput } from '@/components/ui/text-input'
 import { SelectableCard, SelectableCardGrid } from '@/components/ui/selectable-card'
 import { Switch } from '@/components/ui/switch'
 import { CreatorStoreMark } from '@/components/brand/CreatorStoreBrand'
+import CreatorStoreLoader from '@/components/ui/CreatorStoreLoader'
 import {
   Loader2, Plus, Trash2, Copy, Eye, EyeOff, GripVertical, Smartphone, Monitor,
   User, Type, AlignLeft, MousePointerClick, Image as ImageIcon, Package, Grid3x3,
@@ -50,12 +51,14 @@ import {
   trackProductPublished,
 } from '@/lib/analytics'
 import StorefrontThemeGallery from '@/components/dashboard/StorefrontThemeGallery'
-import { getGalleryTheme, getGalleryThemeId, wallpaperStyleFromTheme } from '@/lib/storefront-themes'
+import { getGalleryTheme, getGalleryThemeId, wallpaperStyleFromTheme, STOREFRONT_GALLERY_THEMES, themePatchFromGallery } from '@/lib/storefront-themes'
+import ThemePanel from '@/components/dashboard/design/ThemePanel'
 import WallpaperPanel from '@/components/dashboard/design/WallpaperPanel'
 import TextPanel from '@/components/dashboard/design/TextPanel'
 import ColorsPanel from '@/components/dashboard/design/ColorsPanel'
 import ButtonsPanel from '@/components/dashboard/design/ButtonsPanel'
 import HeaderPanel from '@/components/dashboard/design/HeaderPanel'
+import PanelHeader from '@/components/dashboard/design/PanelHeader'
 import ThemeMatchModal from '@/components/dashboard/design/ThemeMatchModal'
 import { extractImagePalette } from '@/lib/imageContrast'
 import StorefrontStatusCard from '@/components/dashboard/StorefrontStatusCard'
@@ -3005,7 +3008,14 @@ export default function StoreBuilderPage() {
     toast.success(`Applied ${tmpl.name} template!`)
   }
 
-  if (loading) return <div className="flex h-[60vh] items-center justify-center bg-[var(--bg-page,#1C1C1C)]"><Loader2 className="h-8 w-8 animate-spin text-[var(--accent-primary)]" /></div>
+  if (loading) return (
+    <div className="flex h-[60vh] flex-col items-center justify-center bg-[var(--bg-page,#1C1C1C)] p-8 select-none">
+      <CreatorStoreLoader size="xl" badge badgeBg="#000000" ariaLabel="Loading store builder..." />
+      <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-[#A3A3A3]">
+        Loading store builder...
+      </p>
+    </div>
+  )
 
   const storeSlug = store?.slug || store?.username || me?.store?.slug || me?.store?.username || ''
   const storeUrl = typeof window !== 'undefined' && storeSlug ? `${window.location.origin}/${storeSlug}` : ''
@@ -6240,112 +6250,30 @@ function DesignStudioPage({
       <div className="grid gap-8 lg:grid-cols-[1fr_390px] xl:grid-cols-[1fr_420px] lg:items-stretch lg:h-full lg:min-h-0 items-start flex-1 min-h-0">
         {/* LEFT COLUMN: CUSTOMIZATION EDITOR */}
         <div className={`w-full max-w-[660px] mx-auto space-y-5 min-w-0 lg:h-full lg:min-h-0 lg:overflow-y-auto subtle-scrollbar ${mobileViewMode === 'preview' ? 'hidden lg:block' : 'block'}`}>
-          {/* TOP APPEARANCE STATUS BAR */}
-          <div className="p-4 rounded-[24px] border border-[#D8DFFA] bg-white shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <IconBadge color={ICON_BADGE_COLORS.theme}>
-                <Palette className="h-5 w-5" />
-              </IconBadge>
-              <div className="min-w-0">
-                <span className="text-xs font-bold text-[#1F1F1F] flex items-center gap-1.5 uppercase tracking-wider">
-                  Storefront Appearance
-                </span>
-                <p className="text-[11px] font-medium text-[#6F6F6B] pt-0.5">Customize how your CreatorStore storefront looks to visitors.</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-start sm:justify-end shrink-0">
-              {/* Single Canonical Theme Save Status / Action Control */}
-              {themeSaveState === 'saving' ? (
-                <span className="h-9 px-3.5 rounded-full text-xs font-bold text-[#1F1F1F] bg-[#F5F5F3] border border-[#E5E5E3] flex items-center gap-1.5 shrink-0">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving...
-                </span>
-              ) : themeSaveState === 'error' ? (
-                <button
-                  type="button"
-                  onClick={onSaveTheme}
-                  className="h-9 px-3.5 rounded-full text-xs font-bold text-[#DC2626] bg-[#DC2626]/10 border border-[#DC2626]/20 hover:bg-[#DC2626]/20 flex items-center gap-1.5 shrink-0 cursor-pointer transition-all active:scale-95"
-                  title="Click to retry saving"
-                >
-                  <AlertCircle className="h-3.5 w-3.5" /> Save failed
-                </button>
-              ) : hasUnsavedThemeChanges ? (
-                <button
-                  type="button"
-                  onClick={onSaveTheme}
-                  className="h-9 px-4 rounded-full text-xs font-bold text-white bg-[#1F1F1F] hover:bg-[#000000] active:bg-[#111111] shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
-                >
-                  Save Changes →
-                </button>
-              ) : (
-                <span className="h-9 px-3.5 rounded-full text-xs font-bold text-[#16A34A] bg-[#16A34A]/10 border border-[#16A34A]/20 flex items-center gap-1.5 shrink-0">
-                  <Check className="h-3.5 w-3.5" /> Saved
-                </span>
-              )}
-
-              {/* Revert Changes Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (!hasUnsavedThemeChanges || themeSaveState === 'saving') return
-                  setRevertConfirmOpen(true)
-                }}
-                disabled={!hasUnsavedThemeChanges || themeSaveState === 'saving'}
-                className={`h-9 px-3.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${!hasUnsavedThemeChanges || themeSaveState === 'saving'
-                    ? 'border-[#E5E5E3] bg-[#ECECE9] text-[#A8A8A4] cursor-not-allowed'
-                    : 'border-[#E5E5E3] bg-[#FFFFFF] hover:bg-[#F5F5F3] text-[#1F1F1F] shadow-xs active:scale-95'
-                  }`}
-                title="Restore last saved theme"
-              >
-                Revert Changes
-              </button>
-            </div>
-          </div>
-
           {/* SECTION DRILL-DOWN OR MAIN 7 ROWS LIST */}
           {activeSection !== null ? (
             <div className="space-y-4">
-              {/* SUB-PANEL NAVIGATION HEADER */}
-              <div className="flex items-center justify-between bg-[#FBFBFB] border border-[#E5E5E3] p-3.5 rounded-[20px]">
-                <button
-                  type="button"
-                  onClick={() => setActiveSection(null)}
-                  className="flex items-center gap-2 text-xs font-bold text-[#1F1F1F] hover:text-[#000000] transition-colors cursor-pointer"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  <span>{activeSection === 'theme' ? 'Theme' : 'All Settings'}</span>
-                </button>
-
-                <h3 className="text-sm font-bold text-[#1F1F1F] capitalize">
-                  {activeSection === 'theme' ? 'Theme' : `${activeSection} Customization`}
-                </h3>
-
-                {activeSection === 'buttons' ? (
-                  <button
-                    type="button"
-                    onClick={resetButtonsToDefaults}
-                    className="text-[11px] font-bold text-amber-400 hover:underline cursor-pointer"
-                  >
-                    Reset
-                  </button>
-                ) : activeSection === 'colors' ? (
-                  <button
-                    type="button"
-                    onClick={resetColorsToDefaults}
-                    className="text-[11px] font-bold text-amber-400 hover:underline cursor-pointer"
-                  >
-                    Reset
-                  </button>
-                ) : (
-                  <div className="w-12" />
-                )}
-              </div>
+              {/* Note: Standardized all sub-panels; previously: !['buttons', 'theme', 'wallpaper', 'text', 'colors'].includes(activeSection) */}
 
               {/* ---------------- SUB-PANEL 1: THEME ---------------- */}
               {activeSection === 'theme' && (
-                <div className="space-y-4 bg-[#1A1A1A] border border-[#2E2E2E] rounded-[24px] p-4">
-                  <StorefrontThemeGallery theme={theme} onChange={onChange} />
-                </div>
+                <ThemePanel
+                  theme={theme}
+                  onChange={onChange}
+                  onBack={() => setActiveSection(null)}
+                  onSave={onSaveTheme}
+                  onCancel={() => {
+                    if (hasUnsavedThemeChanges && themeSaveState !== 'saving') {
+                      onRevertTheme()
+                    }
+                  }}
+                  onReset={() => {
+                    const defaultTheme = STOREFRONT_GALLERY_THEMES.find((t) => t.id === 'creatorstore') || STOREFRONT_GALLERY_THEMES[1]
+                    if (defaultTheme) onChange(themePatchFromGallery(defaultTheme, theme))
+                  }}
+                  hasUnsavedChanges={hasUnsavedThemeChanges}
+                  isSaving={themeSaveState === 'saving'}
+                />
               )}
 
               {/* ---------------- SUB-PANEL 2: HEADER ---------------- */}
@@ -6355,6 +6283,15 @@ function DesignStudioPage({
                   storeSlug={storeSlug}
                   avatarUrl={theme.avatarUrl || store?.avatarUrl || profile?.avatarUrl}
                   onChange={onChange}
+                  onBack={() => setActiveSection(null)}
+                  onSave={onSaveTheme}
+                  onCancel={() => {
+                    if (hasUnsavedThemeChanges && themeSaveState !== 'saving') {
+                      onRevertTheme()
+                    }
+                  }}
+                  hasUnsavedChanges={hasUnsavedThemeChanges}
+                  isSaving={themeSaveState === 'saving'}
                   onUpgrade={() => setPricingModalOpen(true)}
                   onAvatarUpload={handleAvatarUpload}
                   onLogoUpload={handleHeaderLogoUpload}
@@ -6368,9 +6305,31 @@ function DesignStudioPage({
                 <WallpaperPanel
                   theme={theme}
                   onChange={onChange}
+                  onBack={() => setActiveSection(null)}
+                  onSave={onSaveTheme}
+                  onCancel={() => {
+                    if (hasUnsavedThemeChanges && themeSaveState !== 'saving') {
+                      onRevertTheme()
+                    }
+                  }}
+                  onReset={() =>
+                    onChange({
+                      bgType: 'solid',
+                      background: activePreset?.colors?.background || '#000000',
+                      gradientStart: null,
+                      gradientEnd: null,
+                      gradientDirection: '135deg',
+                      gradientStops: null,
+                      wallpaperPattern: null,
+                      backgroundImage: '',
+                      backgroundVideo: '',
+                    })
+                  }
                   onUpgrade={() => setPricingModalOpen(true)}
                   onUploadImage={handleWallpaperUpload}
                   onUploadVideo={handleWallpaperVideoUpload}
+                  hasUnsavedChanges={hasUnsavedThemeChanges}
+                  isSaving={themeSaveState === 'saving'}
                 />
               )}
 
@@ -6380,6 +6339,16 @@ function DesignStudioPage({
                   theme={theme}
                   activePreset={activePreset}
                   onChange={onChange}
+                  onBack={() => setActiveSection(null)}
+                  onSave={onSaveTheme}
+                  onCancel={() => {
+                    if (hasUnsavedThemeChanges && themeSaveState !== 'saving') {
+                      onRevertTheme()
+                    }
+                  }}
+                  onReset={resetButtonsToDefaults}
+                  hasUnsavedChanges={hasUnsavedThemeChanges}
+                  isSaving={themeSaveState === 'saving'}
                 />
               )}
 
@@ -6388,21 +6357,63 @@ function DesignStudioPage({
                 <TextPanel
                   theme={theme}
                   onChange={onChange}
+                  onBack={() => setActiveSection(null)}
+                  onSave={onSaveTheme}
+                  onCancel={() => {
+                    if (hasUnsavedThemeChanges && themeSaveState !== 'saving') {
+                      onRevertTheme()
+                    }
+                  }}
+                  onReset={() =>
+                    onChange({
+                      font: activePreset?.typography?.bodyFont || 'Manrope',
+                      titleFont: null,
+                      altTitleFont: false,
+                      textColor: activePreset?.colors?.text || '#FFFFFF',
+                      titleColor: null,
+                    })
+                  }
                   onUpgrade={() => setPricingModalOpen(true)}
+                  hasUnsavedChanges={hasUnsavedThemeChanges}
+                  isSaving={themeSaveState === 'saving'}
                 />
               )}
 
               {/* ---------------- SUB-PANEL 6: COLORS ---------------- */}
               {activeSection === 'colors' && (
-                <ColorsPanel theme={theme} onChange={onChange} />
+                <ColorsPanel
+                  theme={theme}
+                  onChange={onChange}
+                  onBack={() => setActiveSection(null)}
+                  onSave={onSaveTheme}
+                  onCancel={() => {
+                    if (hasUnsavedThemeChanges && themeSaveState !== 'saving') {
+                      onRevertTheme()
+                    }
+                  }}
+                  onReset={resetColorsToDefaults}
+                  hasUnsavedChanges={hasUnsavedThemeChanges}
+                  isSaving={themeSaveState === 'saving'}
+                />
               )}
 
               {/* ---------------- SUB-PANEL 7: FOOTER ---------------- */}
               {activeSection === 'footer' && (
-                <div className="space-y-4 bg-[#1A1A1A] border border-[#2E2E2E] rounded-[24px] p-4">
+                <div className="bg-white border border-[#E5E5E3] rounded-[24px] p-5 sm:p-6 shadow-xs space-y-6">
+                  <PanelHeader
+                    title="Footer Customization"
+                    onBack={() => setActiveSection(null)}
+                    onSave={onSaveTheme}
+                    onCancel={() => {
+                      if (hasUnsavedThemeChanges && themeSaveState !== 'saving') {
+                        onRevertTheme()
+                      }
+                    }}
+                    hasUnsavedChanges={hasUnsavedThemeChanges}
+                    isSaving={themeSaveState === 'saving'}
+                  />
                   <div className="space-y-1">
-                    <h4 className="text-sm font-black text-white">Footer Customization</h4>
-                    <p className="text-xs text-[rgba(244,242,236,0.68)]">Control footer branding and links displayed on your public storefront.</p>
+                    <p className="text-xs text-[#6F6F6B]">Control footer branding and links displayed on your public storefront.</p>
                   </div>
 
                   <SwitchToggle
@@ -7030,7 +7041,7 @@ function EditDigitalProductForm({ productId, initialProduct = null, onUpdated, o
           disabled={saving}
           className="font-semibold text-xs h-10 px-6 bg-[#1F1F1F] text-[#FFFFFF] hover:bg-[#000000] rounded-full flex items-center gap-2 cursor-pointer shadow-xs"
         >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
+          {saving ? <CreatorStoreLoader variant="button" text="Saving..." size="xs" /> : 'Save changes'}
         </Button>
       </div>
     </div>

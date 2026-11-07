@@ -28,6 +28,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import ContactDetailsModal from '@/components/dashboard/business-cards/ContactDetailsModal'
 import { CreatorStoreMark } from '@/components/brand/CreatorStoreBrand'
+import CreatorStoreLoader from '@/components/ui/CreatorStoreLoader'
 
 const QRCodeCanvas = dynamic(() => import('qrcode.react').then((m) => m.QRCodeCanvas), { ssr: false })
 
@@ -427,9 +428,9 @@ export default function BusinessCardsClient() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-[#1F1F1F]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1F1F1F] mb-3" />
-        <p className="text-sm font-medium text-[#71717A]">Loading your business card...</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-[#1F1F1F] select-none">
+        <CreatorStoreLoader size="lg" message="Loading your business card..." />
+        <p className="text-xs font-semibold text-[#71717A] mt-3">Loading your business card...</p>
       </div>
     )
   }

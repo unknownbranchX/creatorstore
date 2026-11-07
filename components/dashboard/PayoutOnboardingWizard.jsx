@@ -20,6 +20,7 @@ import {
   Landmark, QrCode, ShieldCheck, AlertTriangle, CheckCircle2,
   Loader2, Save, Sparkles, HelpCircle, Check, Info, ArrowUpRight, ArrowLeft, Wallet
 } from 'lucide-react'
+import CreatorStoreLoader from '@/components/ui/CreatorStoreLoader'
 
 function FieldError({ message }) {
   if (!message) return null
@@ -247,8 +248,9 @@ export default function PayoutSettingsView({ showSettingsNav = true }) {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
+      <div className="flex h-64 flex-col items-center justify-center select-none">
+        <CreatorStoreLoader size="lg" message="Loading payout details..." />
+        <p className="mt-3 text-xs font-semibold text-[#6F6F6B]">Loading payout details...</p>
       </div>
     )
   }

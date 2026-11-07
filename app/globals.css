@@ -540,3 +540,60 @@
 .storefront-slide-from-left {
   animation: storefrontSlideFromLeft 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ====================================================================
+   STOREFRONT SHARED TILE GEOMETRY & SYMMETRY SYSTEM
+   ==================================================================== */
+:root {
+  --storefront-content-max-width: 480px;
+  --storefront-tile-min-height: 64px;
+  --storefront-tile-radius: 22px;
+  --storefront-tile-gap: 14px;
+  --storefront-tile-padding-x: 18px;
+  --storefront-tile-padding-y: 14px;
+}
+
+.storefront-content-column {
+  width: 100%;
+  max-width: var(--storefront-content-max-width, 480px);
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+.storefront-tile-chassis {
+  width: 100%;
+  min-height: var(--storefront-tile-min-height, 64px);
+  border-radius: var(--storefront-tile-radius, 22px);
+  padding: var(--storefront-tile-padding-y, 14px) var(--storefront-tile-padding-x, 18px);
+  box-sizing: border-box;
+}
+
+/* ====================================================================
+   PRODUCT & BUNDLE POPUP WIZARD FIXED WHITE-AND-BLACK THEME BOUNDARY
+   ==================================================================== */
+.product-wizard-modal {
+  --wizard-bg: #FFFFFF;
+  --wizard-surface: #FFFFFF;
+  --wizard-text: #111111;
+  --wizard-text-secondary: #666666;
+  --wizard-border: #E5E5E5;
+  --wizard-muted: #F3F4F6;
+  --wizard-item-bg: #FFFFFF;
+  --wizard-button-bg: #111111;
+  --wizard-button-text: #FFFFFF;
+  --wizard-button-hover: #262626;
+
+  color: #111111 !important;
+  background-color: #FFFFFF !important;
+  border-color: #E5E5E5 !important;
+}
+
+.product-wizard-modal select,
+.product-wizard-modal input {
+  color: #111111;
+  background-color: #FFFFFF;
+}
+
+.product-wizard-modal ::placeholder {
+  color: #9CA3AF;
+}

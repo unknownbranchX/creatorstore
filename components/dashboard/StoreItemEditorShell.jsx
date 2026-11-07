@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { ArrowLeft, Eye, EyeOff, MoreVertical, Copy, Trash2, Smartphone, Check, Loader2 } from 'lucide-react'
+import CreatorStoreLoader from '@/components/ui/CreatorStoreLoader'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,7 +78,7 @@ export default function StoreItemEditorShell({
           {/* Save status badge */}
           {saveState === 'saving' ? (
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F5F5F3] text-[#6F6F6B] font-medium text-xs">
-              <Loader2 className="h-3 w-3 animate-spin text-[#6F6F6B]" />
+              <CreatorStoreLoader size={13} />
               Saving...
             </span>
           ) : saveState === 'saved' ? (

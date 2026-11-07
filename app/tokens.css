@@ -324,5 +324,15 @@
       --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.12);
       --shadow-focus: 0 0 0 2px #1F1F1F;
       --shadow-brand: 0 4px 20px rgba(0, 0, 0, 0.06);
+
+      /* ======================================================================
+       6. STOREFRONT TILE GEOMETRY SYSTEM
+       ====================================================================== */
+      --storefront-content-max-width: 480px;
+      --storefront-tile-min-height: 64px;
+      --storefront-tile-radius: 22px;
+      --storefront-tile-gap: 14px;
+      --storefront-tile-padding-x: 18px;
+      --storefront-tile-padding-y: 14px;
    }
 }

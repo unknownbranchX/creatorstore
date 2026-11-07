@@ -9,6 +9,8 @@ import {
 import { getContrastColor, getResourceButtonStyles } from '@/lib/colorContrast'
 import { extractVideoEmbed, extractAudioEmbed } from '@/components/dashboard/AddMediaConfig'
 import GalleryWizardModal from '@/components/storefront/GalleryWizardModal'
+import ClassicLinkPill from '@/components/storefront/ClassicLinkPill'
+import { storefrontCardRadiusCss } from '@/lib/storefrontLayout'
 
 export default function StorefrontMediaCard({
   section,
@@ -41,8 +43,8 @@ export default function StorefrontMediaCard({
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(null)
   const [isGalleryWizardOpen, setIsGalleryWizardOpen] = useState(false)
 
-  // Card container styles
-  const cardRadius = cards.radius ? `${cards.radius}px` : '18px'
+  // Card container styles standardized across all storefront cards
+  const cardRadius = storefrontCardRadiusCss ? storefrontCardRadiusCss(tokens) : '20px'
 
   /* ========================================================================= */
   /* YOUTUBE MEDIA RENDERER & SOCIAL MEDIA RENDERER (Classic & Image layouts)  */
@@ -110,7 +112,7 @@ export default function StorefrontMediaCard({
       // IMAGE LAYOUT (Phase 4.B & Phase 6)
       const card = (
         <div
-          className="w-full max-w-md mx-auto overflow-hidden transition-all duration-200 group shadow-sm hover:shadow-md"
+          className="w-full overflow-hidden transition-all duration-200 group shadow-sm hover:shadow-md storefront-tile-chassis"
           style={{
             borderRadius: cardRadius,
             backgroundColor: surfaceTheme.cardBg,
@@ -167,7 +169,7 @@ export default function StorefrontMediaCard({
       )
 
       return (
-        <div className="w-full max-w-md mx-auto">
+        <div className="w-full">
           {editor || !safeUrl || safeUrl === '#' ? (
             card
           ) : (
@@ -179,75 +181,41 @@ export default function StorefrontMediaCard({
       )
     }
 
-    // CLASSIC LAYOUT (Phase 4.A & Phase 6)
-    const classicCard = (
-      <div
-        className="w-full inline-flex items-center gap-3.5 px-3.5 py-3 min-h-[54px] transition-all hover:scale-[1.01] hover:opacity-95 shadow-sm group"
-        style={{
-          borderRadius: cardRadius,
-          backgroundColor: surfaceTheme.cardBg,
-          border: `1px solid ${surfaceTheme.cardBorder}`,
+    // CLASSIC LAYOUT: Standardized horizontal link tile matching Linktree reference
+    const leading = activeThumbnail ? (
+      <img
+        src={activeThumbnail}
+        alt=""
+        onError={(e) => {
+          if (defaultYtThumb && e.currentTarget.src !== defaultYtThumb) {
+            e.currentTarget.src = defaultYtThumb
+          }
         }}
+        className="h-full w-full object-cover"
+      />
+    ) : (
+      <div
+        className="h-full w-full flex items-center justify-center"
+        style={{ backgroundColor: platformColor }}
       >
-        <div className="relative h-10 w-10 shrink-0 rounded-[10px] overflow-hidden bg-black/10 flex items-center justify-center">
-          {activeThumbnail ? (
-            <img
-              src={activeThumbnail}
-              alt=""
-              onError={(e) => {
-                if (defaultYtThumb && e.currentTarget.src !== defaultYtThumb) {
-                  e.currentTarget.src = defaultYtThumb
-                }
-              }}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div
-              className="h-full w-full flex items-center justify-center"
-              style={{ backgroundColor: platformColor }}
-            >
-              <PlatformIcon className="h-5 w-5 text-white" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-            <div
-              className="h-4 w-4 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: platformColor }}
-            >
-              <Play className="h-2 w-2 text-white fill-current ml-0.5" />
-            </div>
-          </div>
-        </div>
-        <div className="min-w-0 flex-1 text-left">
-          <div
-            className="text-sm font-bold truncate leading-tight"
-            style={{ color: surfaceTheme.heading || surfaceTheme.text }}
-          >
-            {title || `${platformLabel} Video`}
-          </div>
-          <div
-            className="text-[11px] font-semibold mt-0.5 flex items-center gap-1"
-            style={{ color: platformColor }}
-          >
-            <PlatformIcon className="h-3 w-3" />
-            <span>{platformLabel}</span>
-          </div>
-        </div>
-        <div className="text-[#999995] group-hover:text-[#1F1F1F] dark:group-hover:text-white transition-colors shrink-0 pr-1">
-          <ExternalLink className="h-4 w-4" />
-        </div>
+        <PlatformIcon className="h-5 w-5 text-white" />
       </div>
     )
 
     return (
-      <div className="w-full max-w-md mx-auto">
-        {editor || !safeUrl || safeUrl === '#' ? (
-          classicCard
-        ) : (
-          <a href={safeUrl} target="_blank" rel="noopener noreferrer" className="block w-full">
-            {classicCard}
-          </a>
-        )}
+      <div className="w-full">
+        <ClassicLinkPill
+          tokens={tokens}
+          leadingMedia={leading}
+          badge="play"
+          badgeBg={platformColor}
+          label={title || `${platformLabel} Video`}
+          meta={platformLabel}
+          metaIcon={PlatformIcon}
+          trailingIcon={MoreVertical}
+          href={safeUrl}
+          editor={editor}
+        />
       </div>
     )
   }
@@ -260,7 +228,7 @@ export default function StorefrontMediaCard({
 
     return (
       <div
-        className="w-full max-w-md mx-auto overflow-hidden transition-all shadow-sm"
+        className="w-full overflow-hidden transition-all shadow-sm storefront-tile-chassis"
         style={{
           borderRadius: cardRadius,
           backgroundColor: surfaceTheme.cardBg,
@@ -354,8 +322,9 @@ export default function StorefrontMediaCard({
     if (!images.length) {
       return (
         <div
-          className="w-full max-w-md mx-auto p-6 text-center border border-dashed rounded-2xl"
+          className="w-full p-6 text-center border border-dashed rounded-2xl"
           style={{
+            borderRadius: cardRadius,
             borderColor: surfaceTheme.cardBorder,
             backgroundColor: surfaceTheme.cardBg,
             color: surfaceTheme.muted || surfaceTheme.textMuted,
@@ -375,65 +344,39 @@ export default function StorefrontMediaCard({
           ? 'grid-cols-3'
           : 'grid-cols-2 sm:grid-cols-3'
 
+    const firstImgUrl = images[0]?.url
+    const galleryThumbnail = firstImgUrl ? (
+      <img
+        src={firstImgUrl}
+        alt={images[0]?.name || title || 'Gallery'}
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+      />
+    ) : (
+      <Images className="h-5 w-5 opacity-60" style={{ color: surfaceTheme.text }} />
+    )
+
     return (
       <>
-        {/* CLASSIC STYLE: Compact Link-Style Gallery Pill */}
+        {/* CLASSIC STYLE: Compact Link-Style Gallery Pill matching Linktree reference */}
         {isClassic ? (
-          <div
-            onClick={() => {
-              if (onGalleryClick) {
-                onGalleryClick(section)
-              } else {
-                setIsGalleryWizardOpen(true)
-              }
-              setActiveGalleryIndex(0)
-            }}
-            className="w-full max-w-md mx-auto p-3 sm:p-3.5 transition-all duration-200 cursor-pointer shadow-sm hover:scale-[1.01] active:scale-[0.99] group flex items-center justify-between gap-3 text-left"
-            style={{
-              borderRadius: cardRadius,
-              backgroundColor: surfaceTheme.cardBg,
-              border: `1px solid ${surfaceTheme.cardBorder}`,
-            }}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              {/* Thumbnail of first image */}
-              <div className="h-11 w-11 rounded-xl overflow-hidden bg-black/30 border border-white/10 shrink-0 shadow-xs flex items-center justify-center">
-                {images[0]?.url ? (
-                  <img
-                    src={images[0].url}
-                    alt={images[0].name || title || 'Gallery'}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                ) : (
-                  <Images className="h-5 w-5 opacity-60" style={{ color: surfaceTheme.text }} />
-                )}
-              </div>
-
-              {/* Title & Photo Count Subtitle */}
-              <div className="min-w-0">
-                <h4
-                  className="text-sm font-bold tracking-tight truncate group-hover:underline"
-                  style={{ color: surfaceTheme.heading || surfaceTheme.text }}
-                >
-                  {title || 'gallery'}
-                </h4>
-                <p
-                  className="text-xs truncate flex items-center gap-1.5 mt-0.5"
-                  style={{ color: surfaceTheme.muted || surfaceTheme.textMuted }}
-                >
-                  <Camera className="h-3 w-3 shrink-0 opacity-70" />
-                  <span>Gallery · {images.length} {images.length === 1 ? 'photo' : 'photos'}</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Right More/Eye Icon */}
-            <div
-              className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
-              style={{ color: surfaceTheme.text }}
-            >
-              <Eye className="h-4 w-4" />
-            </div>
+          <div className="w-full">
+            <ClassicLinkPill
+              tokens={tokens}
+              leadingMedia={galleryThumbnail}
+              label={title || 'My gallery'}
+              meta={`Gallery · ${images.length} ${images.length === 1 ? 'photo' : 'photos'}`}
+              metaIcon={Camera}
+              trailingIcon={MoreVertical}
+              onClick={() => {
+                if (onGalleryClick) {
+                  onGalleryClick(section)
+                } else {
+                  setIsGalleryWizardOpen(true)
+                }
+                setActiveGalleryIndex(0)
+              }}
+              editor={editor}
+            />
           </div>
         ) : (
           /* FEATURED STYLE: Prominent Visual Card Presentation */
@@ -446,7 +389,7 @@ export default function StorefrontMediaCard({
               }
               setActiveGalleryIndex(0)
             }}
-            className="w-full max-w-md mx-auto p-4 space-y-3 overflow-hidden shadow-sm transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99] group"
+            className="w-full p-4 space-y-3 overflow-hidden shadow-sm transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99] group storefront-tile-chassis"
             style={{
               borderRadius: cardRadius,
               backgroundColor: surfaceTheme.cardBg,
@@ -536,7 +479,7 @@ export default function StorefrontMediaCard({
 
     return (
       <div
-        className="w-full max-w-md mx-auto p-4 space-y-3 overflow-hidden shadow-sm"
+        className="w-full p-4 space-y-3 overflow-hidden shadow-sm storefront-tile-chassis"
         style={{
           borderRadius: cardRadius,
           backgroundColor: surfaceTheme.cardBg,
@@ -636,7 +579,7 @@ export default function StorefrontMediaCard({
 
     return (
       <div
-        className="w-full max-w-md mx-auto p-4 space-y-3 overflow-hidden shadow-sm transition-all"
+        className="w-full p-4 space-y-3 overflow-hidden shadow-sm transition-all storefront-tile-chassis"
         style={{
           borderRadius: cardRadius,
           backgroundColor: surfaceTheme.cardBg,

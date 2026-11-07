@@ -23,6 +23,7 @@ import { useDashboardHeader } from '@/components/dashboard/HeaderContext'
 import CreateAutomationModal from '@/components/automations/CreateAutomationModal'
 import ConnectInstagramModal from '@/components/automations/ConnectInstagramModal'
 import QueueActivityTab from '@/components/automations/QueueActivityTab'
+import CreatorStoreLoader from '@/components/ui/CreatorStoreLoader'
 
 export default function AutomationsPage() {
   const router = useRouter()
@@ -314,8 +315,9 @@ export default function AutomationsPage() {
       {activeTab === 'QUEUE' ? (
         <QueueActivityTab />
       ) : loading ? (
-        <div className="flex h-64 items-center justify-center bg-[#FFFFFF] rounded-[24px] border border-[#E5E5E3] shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-          <Loader2 className="h-8 w-8 animate-spin text-[#1F1F1F]" />
+        <div className="flex h-64 flex-col items-center justify-center bg-[#FFFFFF] rounded-[24px] border border-[#E5E5E3] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-6 select-none">
+          <CreatorStoreLoader size="lg" message="Loading automations..." />
+          <p className="mt-3 text-xs font-semibold text-[#6F6F6B]">Loading automations...</p>
         </div>
       ) : filteredAutomations.length === 0 ? (
         /* Empty State */

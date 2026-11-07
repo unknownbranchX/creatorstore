@@ -329,6 +329,14 @@ async function runTests() {
     })
     assert(creatorUser?.store, 'A creator with an existing store must exist')
 
+    // Ensure clean baseline different from draftPatch
+    if (creatorUser.store.theme?.galleryThemeId === 'flare') {
+      const resetBaseline = await storeService.update(creatorUser.id, {
+        theme: { ...creatorUser.store.theme, galleryThemeId: 'custom', background: '#000000' },
+      })
+      creatorUser.store = resetBaseline
+    }
+
     const originalTheme = creatorUser.store.theme || {}
 
     // Initial state

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Calendar, Clock, Video, CheckCircle2, Loader2, Globe, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
+import CreatorStoreLoader from '@/components/ui/CreatorStoreLoader'
 
 export default function CoachingBookingWidget({ productId, onSlotSelected, selectedSlot }) {
   const [config, setConfig] = useState(null)
@@ -109,8 +110,8 @@ export default function CoachingBookingWidget({ productId, onSlotSelected, selec
 
   if (loadingConfig) {
     return (
-      <div className="p-6 bg-white rounded-3xl border border-white/10 text-center space-y-3">
-        <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+      <div className="p-8 bg-white rounded-3xl border border-white/10 text-center space-y-3 select-none flex flex-col items-center justify-center">
+        <CreatorStoreLoader size="md" className="mx-auto" />
         <p className="text-xs text-[rgba(244,242,236,0.68)] font-medium">Loading session availability...</p>
       </div>
     )
@@ -167,8 +168,8 @@ export default function CoachingBookingWidget({ productId, onSlotSelected, selec
         <Label className="text-xs font-extrabold text-[#F4F2EC]">2. Select Start Time</Label>
 
         {loadingSlots ? (
-          <div className="py-8 text-center text-xs text-[rgba(244,242,236,0.5)] font-medium space-y-2">
-            <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+          <div className="py-8 text-center text-xs text-[rgba(244,242,236,0.5)] font-medium space-y-2 flex flex-col items-center justify-center select-none">
+            <CreatorStoreLoader size="sm" className="mx-auto" />
             <span>Finding available time slots...</span>
           </div>
         ) : slots.length === 0 ? (
